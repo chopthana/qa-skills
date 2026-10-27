@@ -13,14 +13,14 @@ its install command. Never promise "instant".
 
 Every managed route installs from this repo's own marketplace —
 `.claude-plugin/marketplace.json` (named `chopthana`) and `plugin.json` (the
-bundle `chop-skills`). Those routes reinstall only when `version` in
+bundle `qa-skills`). Those routes reinstall only when `version` in
 `plugin.json` changes, so **bump it in the same commit as any skill change**;
 this repo has no release automation to do it.
 
 | Agent | Route | Updates itself? |
 | --- | --- | --- |
-| Claude Code | `chop-skills@chopthana` | Yes, by default |
-| Codex | `chop-skills@chopthana` | Yes, at startup |
+| Claude Code | `qa-skills@chopthana` | Yes, by default |
+| Codex | `qa-skills@chopthana` | Yes, at startup |
 | Copilot CLI / VS Code | `chopthana` marketplace | Yes, after a one-time `autoUpdate: true` |
 | Gemini CLI | `gemini skills install` (copies) | No. Re-run the command |
 | Everyone else | clone + symlink | No. `git pull` in the clone |

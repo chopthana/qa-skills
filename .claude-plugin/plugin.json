@@ -1,6 +1,6 @@
 {
-  "name": "chop-skills",
-  "version": "1.2.0",
+  "name": "qa-skills",
+  "version": "2.0.0",
   "description": "Personal agent skills: batch-convert QA test-case workbooks into a repo's own domain test-case YAML, reconciled row-by-row so nothing is dropped.",
   "author": {
     "name": "Thanakorn Chanprasit",

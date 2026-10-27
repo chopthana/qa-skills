@@ -7,7 +7,7 @@
   "description": "Thanakorn Chanprasit's personal agent skills, as an installable plugin.",
   "plugins": [
     {
-      "name": "chop-skills",
+      "name": "qa-skills",
       "source": "./",
       "description": "Personal agent skills: batch-convert QA test-case workbooks into a repo's own domain test-case YAML, reconciled row-by-row so nothing is dropped.",
       "category": "engineering",

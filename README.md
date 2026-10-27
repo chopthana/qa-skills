@@ -26,10 +26,10 @@ Pick **one** route per agent — installing two gives you every skill twice.
 
 ```bash
 claude plugin marketplace add chopthana/qa-skills
-claude plugin install chop-skills@chopthana
+claude plugin install qa-skills@chopthana
 ```
 
-Updates itself. To pull a change by hand: `claude plugin update chop-skills`.
+Updates itself. To pull a change by hand: `claude plugin update qa-skills`.
 
 </details>
 
@@ -38,7 +38,7 @@ Updates itself. To pull a change by hand: `claude plugin update chop-skills`.
 
 ```bash
 codex plugin marketplace add chopthana/qa-skills
-codex plugin add chop-skills@chopthana
+codex plugin add qa-skills@chopthana
 ```
 
 Updates at startup.
@@ -50,7 +50,7 @@ Updates at startup.
 
 ```bash
 copilot plugin marketplace add chopthana/qa-skills
-copilot plugin install chop-skills@chopthana
+copilot plugin install qa-skills@chopthana
 ```
 
 Then once, in `~/.copilot/settings.json`:
@@ -116,7 +116,7 @@ Restart the agent, or reload its skills, after installing.
 .agents/install-block.md   the canonical install wording — change it there first
 .claude-plugin/
 ├── marketplace.json   catalog: marketplace `chopthana`, plugin source "./"
-└── plugin.json        plugin `chop-skills`: version and the skills it ships
+└── plugin.json        plugin `qa-skills`: version and the skills it ships
 skills/<category>/<skill-name>/
 ├── SKILL.md           frontmatter (name + description) and the workflow
 └── scripts/           helpers the SKILL.md calls
