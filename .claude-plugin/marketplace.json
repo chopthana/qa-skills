@@ -1,8 +1,8 @@
 {
-  "name": "ppthana",
+  "name": "chopthana",
   "owner": {
     "name": "Thanakorn Chanprasit",
-    "url": "https://github.com/ppthana"
+    "url": "https://github.com/chopthana"
   },
   "description": "Thanakorn Chanprasit's personal agent skills, as an installable plugin.",
   "plugins": [

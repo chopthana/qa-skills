@@ -8,8 +8,8 @@ owner can bypass.**
 GitHub refuses both mechanisms on a private repo on a Free personal plan:
 
 ```text
-POST /repos/ppthana/qa-skills/rulesets          403
-PUT  /repos/ppthana/qa-skills/branches/main/protection   403
+POST /repos/chopthana/qa-skills/rulesets          403
+PUT  /repos/chopthana/qa-skills/branches/main/protection   403
 "Upgrade to GitHub Pro or make this repository public to enable this feature."
 ```
 
@@ -20,8 +20,8 @@ non-fast-forward blocked, PRs required with one approval, and
 `RepositoryRole 5` (admin, i.e. the owner) as a bypass actor:
 
 ```bash
-gh api -X POST repos/ppthana/qa-skills/rulesets --input .github/rulesets/main.json
-gh api repos/ppthana/qa-skills/rulesets -q '.[] | "\(.id)  \(.name)  \(.enforcement)"'
+gh api -X POST repos/chopthana/qa-skills/rulesets --input .github/rulesets/main.json
+gh api repos/chopthana/qa-skills/rulesets -q '.[] | "\(.id)  \(.name)  \(.enforcement)"'
 ```
 
 ## What is already true
