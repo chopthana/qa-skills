@@ -1,103 +1,128 @@
 # Chop's agent skills
 
-Personal [Agent Skills](https://docs.claude.com/en/docs/claude-code/skills) kept
-on this machine and backed up here. Private on purpose — some of them carry
-work-specific detail (internal UI labels, table names, ticket numbers).
+Personal agent skills, straight from my `.agents` directory. Private on
+purpose — some carry work-specific detail (internal UI labels, table names,
+ticket numbers).
 
-A `SKILL.md` is plain Markdown with YAML frontmatter and no tool-specific
-syntax, so these work with **any AI tool that reads Agent Skills** — Claude
-Code, Codex, Cursor, Gemini CLI, opencode and others. Two install routes below:
-`install.sh` for any tool, or the Claude Code plugin marketplace.
+A `SKILL.md` here is plain Markdown with YAML frontmatter and no tool-specific
+syntax, so these work with any agent that reads Agent Skills.
 
 ## Skills
 
 | Skill | What it does |
 | --- | --- |
-| [`gen-test-cases-to-yaml`](skills/gen-test-cases-to-yaml/SKILL.md) | Batch-convert a whole sprint folder of QA test-case workbooks into a repo's own domain test-case YAML tree — translated to English, staged in one folder, reconciled row-by-row so nothing is dropped, imported in one pass. |
+| [`gen-test-cases-to-yaml`](skills/engineering/gen-test-cases-to-yaml/SKILL.md) | Batch-convert a whole sprint folder of QA test-case workbooks into a repo's own domain test-case YAML tree — translated to English, staged in one folder, reconciled row-by-row so nothing is dropped, imported in one pass. |
 
-## Install — any AI tool
+## Installation
 
-```bash
-git clone https://github.com/ppthana/Chop-thanakorn-skills.git ~/Desktop/Chop-thanakorn-skills
-cd ~/Desktop/Chop-thanakorn-skills
-./install.sh --list     # show what it would do, change nothing
-./install.sh            # do it
-```
+This repo is **private**, so every route below needs GitHub access to it: be the
+owner, or be added as a collaborator. The native plugin commands clone with your
+own git credentials, so they work once you have access.
 
-It symlinks each skill into the skill directories that exist on the machine:
+Pick **one** route per agent — installing two gives you every skill twice.
 
-| Directory | Read by |
-| --- | --- |
-| `~/.agents/skills/` | the harness-neutral convention — Codex, Cursor, Gemini CLI, opencode, and anything else that reads Agent Skills |
-| `~/.claude/skills/` | Claude Code |
-
-Symlinks, not copies: every tool reads the same file, and `git status` here stays
-truthful. The script is idempotent, never overwrites anything it did not create,
-takes skill names to install a subset, and `--uninstall` removes only links that
-point into this repo.
-
-A tool that reads a single instructions file instead of a skills directory
-(`AGENTS.md`, `GEMINI.md`, `.cursorrules`) needs a pointer rather than a link —
-add this to that file yourself:
-
-```text
-When a task matches a skill under ~/.agents/skills/, read that SKILL.md first
-and follow it.
-```
-
-## Install — Claude Code plugin
-
-Claude Code can install straight from this repo, with versioning and updates:
+<details>
+<summary><strong>Claude Code</strong></summary>
 
 ```bash
 claude plugin marketplace add ppthana/Chop-thanakorn-skills
-claude plugin install gen-test-cases-to-yaml@chop-thanakorn-skills
+claude plugin install chop-skills@ppthana
 ```
+
+Updates itself. To pull a change by hand: `claude plugin update chop-skills`.
+
+</details>
+
+<details>
+<summary><strong>Codex</strong></summary>
+
+```bash
+codex plugin marketplace add ppthana/Chop-thanakorn-skills
+codex plugin add chop-skills@ppthana
+```
+
+Updates at startup.
+
+</details>
+
+<details>
+<summary><strong>GitHub Copilot</strong> (CLI and VS Code)</summary>
+
+```bash
+copilot plugin marketplace add ppthana/Chop-thanakorn-skills
+copilot plugin install chop-skills@ppthana
+```
+
+Then once, in `~/.copilot/settings.json`:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "ppthana": {
+      "source": { "source": "github", "repo": "ppthana/Chop-thanakorn-skills" },
+      "autoUpdate": true
+    }
+  }
+}
+```
+
+In VS Code: **Chat: Install Plugin From Source**, then
+`https://github.com/ppthana/Chop-thanakorn-skills`.
+
+</details>
+
+<details>
+<summary><strong>Gemini CLI</strong> (manual updates)</summary>
+
+```bash
+gemini skills install https://github.com/ppthana/Chop-thanakorn-skills.git --path skills/engineering
+```
+
+Re-run to update.
+
+</details>
+
+<details>
+<summary><strong>Any other agent, or editable files</strong> (manual updates)</summary>
+
+```bash
+npx skills@latest add ppthana/Chop-thanakorn-skills -a <agent>   # cursor, opencode, windsurf, amp, …
+```
+
+`npx skills` fetches through the public skills.sh service, so it is the one
+route that will **not** reach this private repo. Until the repo is public, clone
+and link instead:
+
+```bash
+git clone https://github.com/ppthana/Chop-thanakorn-skills.git ~/Desktop/Chop-thanakorn-skills
+ln -sfn ~/Desktop/Chop-thanakorn-skills/skills/engineering/gen-test-cases-to-yaml \
+        ~/.agents/skills/gen-test-cases-to-yaml
+```
+
+`~/.agents/skills/` is the shared Agent Skills directory that Cursor, Gemini CLI,
+opencode and others read. A symlink also means edits in the clone take effect
+immediately, which is what you want while writing a skill — the plugin routes
+above run from a copy of what is **pushed**.
+
+</details>
 
 Then invoke with `/gen-test-cases-to-yaml`, or just describe the task — the
 `description` in the skill's frontmatter is what the agent matches against.
-
-Pick one route per skill, not both: the same skill name registered twice gets
-loaded twice. `install.sh` detects an installed plugin and skips the Claude
-symlink for you.
-
-Housekeeping:
-
-```bash
-claude plugin list                       # what is installed
-claude plugin details gen-test-cases-to-yaml@chop-thanakorn-skills
-claude plugin update gen-test-cases-to-yaml   # after pushing a change here
-claude plugin uninstall gen-test-cases-to-yaml
-claude plugin marketplace remove chop-thanakorn-skills
-```
-
-An installed plugin runs from `~/.claude/plugins/cache/`, i.e. a copy of what is
-**pushed**. Editing the working copy here changes nothing until you commit, push
-and `claude plugin update`.
-
-## Writing a skill
-
-While actively editing one, use `install.sh` rather than the plugin: it links to
-the working copy, so every save takes effect in the next session with no
-commit/push/update round trip. The plugin route runs from a copy of what is
-**pushed**.
+Restart the agent, or reload its skills, after installing.
 
 ## Layout
 
 ```text
-install.sh             links skills into every skill dir on the machine
 .claude-plugin/
-├── marketplace.json   catalog: this repo as a marketplace, plugin source "./"
-└── plugin.json        the plugin: version, metadata, which skills it ships
-skills/<skill-name>/
+├── marketplace.json   catalog: marketplace `ppthana`, plugin source "./"
+└── plugin.json        plugin `chop-skills`: version and the skills it ships
+skills/<category>/<skill-name>/
 ├── SKILL.md           frontmatter (name + description) and the workflow
 └── scripts/           helpers the SKILL.md calls
 ```
 
-Adding another skill: drop it in `skills/`, list it in `plugin.json`'s `skills`
-array (one plugin shipping several skills) or add a second entry to
-`marketplace.json`'s `plugins` (separate plugins, installed independently), bump
-the version, push. Validate before pushing:
+Adding a skill: drop it under `skills/<category>/`, add its path to
+`plugin.json`'s `skills` array, bump `version`, push. Validate first:
 
 ```bash
 claude plugin validate .

@@ -1,30 +1,23 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "chop-thanakorn-skills",
+  "name": "ppthana",
   "owner": {
-    "name": "Thanakorn Chanprasit"
+    "name": "Thanakorn Chanprasit",
+    "url": "https://github.com/ppthana"
   },
-  "metadata": {
-    "description": "Personal Claude Code skills by Thanakorn Chanprasit",
-    "version": "0.2.0"
-  },
+  "description": "Thanakorn Chanprasit's personal agent skills, as an installable plugin.",
   "plugins": [
     {
-      "name": "gen-test-cases-to-yaml",
+      "name": "chop-skills",
       "source": "./",
-      "description": "Batch-convert a folder of QA test-case workbooks (.xlsx/CSV) into a repo's own domain test-case YAML tree: inventory the folder, stage every case, reconcile row-by-row so nothing is dropped, then import in one pass.",
-      "version": "0.2.0",
-      "author": {
-        "name": "Thanakorn Chanprasit"
-      },
+      "description": "Personal agent skills: batch-convert QA test-case workbooks into a repo's own domain test-case YAML, reconciled row-by-row so nothing is dropped.",
+      "category": "engineering",
       "keywords": [
         "test-cases",
         "qa",
         "excel",
         "yaml",
         "batch-conversion"
-      ],
-      "category": "workflow"
+      ]
     }
   ]
 }
