@@ -1,7 +1,7 @@
 {
   "name": "gen-test-cases-to-yaml",
-  "description": "Batch-convert a folder of QA test-case workbooks (.xlsx/CSV) into domain test-case YAML: inventory the folder, stage every case, reconcile row-by-row so nothing is dropped, then import in one pass. Built for CJ Express People Admin sprint drops.",
-  "version": "0.1.0",
+  "description": "Batch-convert a folder of QA test-case workbooks (.xlsx/CSV) into a repo's own domain test-case YAML tree: inventory the folder, stage every case, reconcile row-by-row so nothing is dropped, then import in one pass.",
+  "version": "0.2.0",
   "author": {
     "name": "Thanakorn Chanprasit"
   },

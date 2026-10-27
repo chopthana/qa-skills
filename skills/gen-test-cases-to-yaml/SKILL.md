@@ -1,6 +1,6 @@
 ---
 name: gen-test-cases-to-yaml
-description: Batch-convert a whole folder of QA test-case files (a sprint drop of CJ Express .xlsx workbooks, CSV, or Markdown) into domain test-case YAML under docs/test-cases/domain/ — translated into English, staged in one folder, reconciled row-by-row so nothing is dropped, then imported into the repo in a single pass. Use for "gen-test-cases-to-yaml", "แปลง test case ทั้งโฟลเดอร์", "เอา test cases sprint N เข้า project", "convert the sprint-16 test cases", or any request that points at a directory of test-case files rather than a single document.
+description: Batch-convert a whole folder of QA test-case files (a sprint drop of .xlsx workbooks, CSV, or Markdown) into a repo's own domain test-case YAML tree — translated into English, staged in one folder, reconciled row-by-row so nothing is dropped, then imported in a single pass. Use for "gen-test-cases-to-yaml", "แปลง test case ทั้งโฟลเดอร์", "เอา test cases sprint N เข้า project", "convert the sprint-16 test cases", or any request that points at a directory of test-case files rather than a single document.
 ---
 
 # Folder of QA test cases → domain YAML (batch import)
@@ -11,37 +11,37 @@ it: inventory the whole folder, convert every workbook into a **staging
 folder**, prove row-by-row that nothing was lost, then move the staged tree
 into the repo **in one pass**.
 
-`docs/test-cases/domain/README.md` is the canonical target format. If this
-skill ever disagrees with it, follow the README and say so.
+The target tree's own `README.md` (step 2 finds it, as `$ROOT/README.md`) is
+the canonical format. If this skill ever disagrees with it, follow that README
+and say so.
 
 ## Source folder
 
-Default convention on this machine:
+The user names the folder, or the sprint it belongs to. With neither, list the
+directory their drops live in and ask which one — never guess between sprints.
+Many teams keep them per sprint, e.g. `~/Desktop/Test-cases/<team>-sprint-<N>/`.
 
-```text
-~/Desktop/Test-cases/Test-cases-sprint-<N>/
-```
+`scan_folder.py` works out each workbook's layout itself (step 1), so no shape
+is assumed here. What to look for in its output:
 
-The user usually names the sprint (`sprint 16`) or passes a path. With neither,
-list `~/Desktop/Test-cases/` and ask which folder — never guess between sprints.
+- a **legend sheet** (status / priority lookup values) — reported as `non-case`,
+  correctly ignored
+- a **case sheet** whose header is often not row 1, with one row per test case
+- a **ticket key**, usually in the filename — the traceability key to carry into
+  the YAML header comments
 
-A CJ Express QA workbook looks like
-`Test Case - ALC - <ticket> - [People Tech][<area>] <topic>.xlsx` with:
-
-- a `list` sheet — status/priority legend, **not** case data
-- a `TestResult` sheet — header on row 4, columns `ลำดับ` / `ประเภทการทดสอบ` /
-  `TC ID` / `หัวข้อ` / `กรณีทดสอบและขั้นตอนการทดสอบ` / `ผลการทดสอบที่คาดหวัง` /
-  `สถานะ` / `Tester` / `Test date` / `หมายเหตุ` / `ระดับความสำคัญ` /
-  `Remark for Pass with Condition`
-
-The ticket number in the filename (`ALC-2275`) is the traceability key — carry
-it into the YAML header comments.
+> **Worked example** — CJ Express QA drops are named
+> `Test Case - ALC - <ticket> - [People Tech][<area>] <topic>.xlsx`, with a
+> `list` legend sheet and a `TestResult` sheet whose header is row 4:
+> `ลำดับ` / `ประเภทการทดสอบ` / `TC ID` / `หัวข้อ` /
+> `กรณีทดสอบและขั้นตอนการทดสอบ` / `ผลการทดสอบที่คาดหวัง` / `สถานะ` / `Tester` /
+> `Test date` / `หมายเหตุ` / `ระดับความสำคัญ` / `Remark for Pass with Condition`.
 
 ## Workflow
 
 Work in a staging directory for the whole run; use the session scratchpad
 directory (or `<repo>/.test-case-staging/<sprint>` when there is none). Call it
-`$STG` below. Nothing lands in `docs/` until step 6.
+`$STG` below. Nothing lands in the repo until step 6.
 
 ### 1. Inventory the folder
 
@@ -64,30 +64,47 @@ step 5 checks against.
 
 ### 2. Plan the placement
 
-Write `$STG/plan.md`: one line per source file → target
-`<domain>/<feature>/` + ID prefix + how many cases.
-
-Existing vocabulary in the tree (reuse before inventing):
-
-| Path                                    | ID prefix                     | Content                          |
-| --------------------------------------- | ----------------------------- | -------------------------------- |
-| `configuration/{sale,focus,best-selling}` | `CONFIG-INCENTIVE-<VARIANT>` | Incentive criteria configuration |
-| `permission/{sale,focus,best-selling}`  | `PERMISSION-INCENTIVE-<VARIANT>` | Permission groups / role defaults |
-| `incentive/audit`                       | `AUDIT-INCENTIVE`             | Incentive audit screens          |
-| `incentive/bao-cafe`                    | `BAO-INCENTIVE[-<TOPIC>]`     | Bao Cafe incentive               |
-| `incentive/{sale,focus,best-selling}`   | `INCENTIVE-<VARIANT>-<TOPIC>` | Per-variant incentive flows      |
-
-A genuinely new product area gets a new `<domain>/<feature>/` directory
-(branch/shift settings → `shift/branch-setting/`, prefix `SHIFT-BRANCH-SETTING`).
-Propose the name in your plan rather than asking open-endedly; ask only when
-two existing homes are equally plausible.
-
-Then see what is taken:
+Where cases live and how IDs are spelled belong to the **target repo**, not to
+this skill. Read them out of the tree before planning anything — never carry a
+path or an ID prefix over from another project.
 
 ```bash
-python3 <skill-dir>/scripts/id_index.py --root docs/test-cases/domain
-python3 <skill-dir>/scripts/id_index.py --prefix SHIFT-BRANCH-SETTING   # one family
+# find the root the repo keeps domain test cases in, and call it $ROOT
+find . -type d -name "domain" -path "*test-case*" -not -path "*/node_modules/*"
+
+cat "$ROOT/README.md"                                    # the tree's own format rules, if any
+ls "$ROOT"                                               # existing domains
+ls -d "$ROOT"/*/*/                                       # existing features
+python3 <skill-dir>/scripts/id_index.py --root "$ROOT"   # every ID family in use
 ```
+
+**`$ROOT/README.md`, where it exists, outranks this skill.** Follow it and tell
+the user if the two disagree.
+
+Then write `$STG/plan.md`: one line per source file → target
+`<domain>/<feature>/` + ID family + how many cases. Three rules:
+
+- **Reuse before inventing.** The `ls` and `id_index.py` output above *is* the
+  vocabulary. Map each workbook onto the existing `<domain>/<feature>/` that
+  already holds the same product area; a directory with similar cases in it is
+  the answer, however the workbook happens to be named.
+- **A genuinely new product area gets a new `<domain>/<feature>/`**, lowercase
+  kebab-case, named after the product area the way *the repo* names it — not
+  after the workbook's filename or the ticket. Propose the name in the plan
+  rather than asking open-endedly; ask only when two existing homes are equally
+  plausible.
+- **Match the tree's own ID shape.** The sheet owns the ID (next section), but
+  where you must coin one, derive it from the placement the way this repo
+  already does. `id_index.py` shows whether its families lead with the domain
+  (`<DOMAIN>-<FEATURE>-NNN`) or with the feature, and whether they carry a topic
+  segment. Match the dominant shape; do not introduce a third.
+
+> **Worked example** — in the CJ Express people-admin repo `$ROOT` is
+> `docs/test-cases/domain/`, and the lookup returns domains `configuration/`,
+> `permission/`, `incentive/`, `shift/` with families such as
+> `CONFIG-INCENTIVE-<VARIANT>`, `PERMISSION-INCENTIVE-<VARIANT>`,
+> `AUDIT-INCENTIVE`, `INCENTIVE-<VARIANT>-<TOPIC>`. That is what one repo's
+> vocabulary looks like, not a vocabulary to apply elsewhere.
 
 #### The sheet owns the ID
 
@@ -123,38 +140,65 @@ any YAML — a sheet edit can land off by a row. After the fix, `id` and sheet
 
 ### 3. Convert into staging
 
-Write files to `$STG/domain/<domain>/<feature>/<scenario>.yaml` — the same tree
-shape as `docs/test-cases/domain/`, so step 6 is a single move.
+Write files to `$STG/tree/<domain>/<feature>/<scenario>.yaml`, mirroring
+`$ROOT`'s own tree shape, so step 6 is a single move into `$ROOT`.
 
 Group by behavior, not by spreadsheet row order: variants of one rule that
 share setup go in one file as a `cases` array; a source row that tests two
 behaviors becomes two cases. One file per scenario, lowercase kebab-case.
 
-Every file carries the house header comment (see `permission/sale/role-defaults.yaml`):
+**Follow the header comment the target tree already uses** — open a neighbouring
+file in `$ROOT` and copy its shape. Where the tree has no convention, use this:
 
 ```yaml
-# Converted from "Test Case - ALC - 2276 - [People Tech][Shift] ตั้งค่าสาขา — Search bar.xlsx" (sheet TestResult)
-# Topic: Branch search bar — code/name field validation (TC SHIFT-BRANCH-SETTING-028..031)
-# Thai text in backticks is the exact UI label / message; English around it is a translation.
+# Converted from "<source filename>" (sheet <sheet name>)
+# Topic: <what this file covers> (TC <first id>..<last id>)
+# <one line per translation convention this file relies on>
 cases:
-  # Source: ALC-2276 SHIFT-BRANCH-SETTING-028
-  - id: "SHIFT-BRANCH-SETTING-028"   # the sheet's TC ID, verbatim
-    scenario: "Search by branch code or name (`รหัส / ชื่อสาขา`) with only 3 characters"
+  # Source: <ticket> <sheet TC ID>
+  - id: "<sheet TC ID, verbatim>"
+    scenario: "<the behaviour or rule under test>"
     preconditions:
-      - "A user who can open Branch working shifts (`กะการทำงานของสาขา`) > Branch settings (`ตั้งค่าสาขา`)"
+      - "<data, permission, role, route or starting state>"
     steps:
-      - "Log in"
-      - "Click Branch working shifts (`กะการทำงานของสาขา`)"
-      - "Click Branch settings (`ตั้งค่าสาขา`)"
-      - "Enter `001` in the branch code/name field"
-      - "Click Search (`ค้นหา`)"
+      - "<one user or system action>"
     expectations:
-      - "An error message is shown under the field, e.g. `ระบุอย่างน้อย 4 ตัวอักษร เช่น 0001 , สีลม...`"
-      - "The branch code/name field is outlined in red"
+      - "<one observable result>"
 ```
 
-The `# Source:` comment above every case is mandatory — it is the only place
-the source TC ID survives, since the case schema is exactly five fields.
+Three lines are not optional, whatever the tree's style:
+
+- `# Converted from` — the source filename and sheet, so a reader can go back to
+  the workbook.
+- `# Source:` above **every** case — the ticket and the sheet's TC ID. This is
+  the only place the source ID survives, since the case schema is exactly five
+  fields.
+- a note naming any convention the file leans on, when the source is not in
+  English — e.g. that backticked text is the original-language UI label while
+  the prose around it is translated (see step 4).
+
+> **Worked example** — a Thai-language workbook in the people-admin repo
+> produces this, where the backticks hold the exact Thai UI labels:
+>
+> ```yaml
+> # Converted from "Test Case - ALC - 2276 - [People Tech][Shift] ตั้งค่าสาขา — Search bar.xlsx" (sheet TestResult)
+> # Topic: Branch search bar — code/name field validation (TC SHIFT-BRANCH-SETTING-028..031)
+> # Thai text in backticks is the exact UI label / message; English around it is a translation.
+> cases:
+>   # Source: ALC-2276 SHIFT-BRANCH-SETTING-028
+>   - id: "SHIFT-BRANCH-SETTING-028"
+>     scenario: "Search by branch code or name (`รหัส / ชื่อสาขา`) with only 3 characters"
+>     preconditions:
+>       - "A user who can open Branch working shifts (`กะการทำงานของสาขา`) > Branch settings (`ตั้งค่าสาขา`)"
+>     steps:
+>       - "Log in"
+>       - "Click Branch settings (`ตั้งค่าสาขา`)"
+>       - "Enter `001` in the branch code/name field"
+>       - "Click Search (`ค้นหา`)"
+>     expectations:
+>       - "An error message is shown under the field, e.g. `ระบุอย่างน้อย 4 ตัวอักษร เช่น 0001 , สีลม...`"
+>       - "The branch code/name field is outlined in red"
+> ```
 
 Record each row in `$STG/mapping.csv` as you go:
 
@@ -220,7 +264,7 @@ rather than a claim:
 
 ```bash
 python3 <skill-dir>/scripts/reconcile.py \
-  --source "$STG/source.json" --map "$STG/mapping.csv" --staging "$STG/domain"
+  --source "$STG/source.json" --map "$STG/mapping.csv" --staging "$STG/tree"
 ```
 
 It fails on any unaccounted source row, any staged case that traces back to no
@@ -232,7 +276,7 @@ Then the format gate, against the live tree so IDs are unique repo-wide:
 
 ```bash
 python3 .agents/skills/testcase-to-domain/scripts/validate.py \
-  --root docs/test-cases/domain "$STG/domain"
+  --root "$ROOT" "$STG/tree"
 ```
 
 Fix everything both report. Do not proceed to step 6 with either one red.
@@ -242,10 +286,10 @@ Fix everything both report. Do not proceed to step 6 with either one red.
 Only once steps 5's gates are green, move the whole staged tree in at once:
 
 ```bash
-rsync -a "$STG/domain/" docs/test-cases/domain/    # or: cp -R
+rsync -a "$STG/tree/" "$ROOT"/              # or: cp -R
 python3 .agents/skills/testcase-to-domain/scripts/validate.py \
-  --root docs/test-cases/domain docs/test-cases/domain
-git status --short docs/test-cases/domain
+  --root "$ROOT" "$ROOT"
+git status --short "$ROOT"
 ```
 
 Re-run the validator on the merged tree — an ID collision can only appear
