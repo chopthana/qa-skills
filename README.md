@@ -29,7 +29,7 @@ claude plugin marketplace add chopthana/qa-skills
 claude plugin install qa-skills@chopthana
 ```
 
-Updates itself. To pull a change by hand: `claude plugin update qa-skills`.
+Updates itself.
 
 </details>
 
@@ -109,6 +109,33 @@ above run from a copy of what is **pushed**.
 Then invoke with `/gen-test-cases-to-yaml`, or just describe the task — the
 `description` in the skill's frontmatter is what the agent matches against.
 Restart the agent, or reload its skills, after installing.
+
+## Updating
+
+A new skill, or a change to one, reaches you only when `version` in
+`plugin.json` moves — the managed routes compare that, not the commit. None of
+these commands needs a clone of this repo.
+
+| Agent | Pull the change |
+| --- | --- |
+| Claude Code | `claude plugin marketplace update chopthana`, then `claude plugin update qa-skills` |
+| Codex | `codex plugin marketplace upgrade chopthana` |
+| Copilot CLI / VS Code | `copilot plugin marketplace update chopthana`, then `copilot plugin update qa-skills` |
+| Gemini CLI | re-run the `gemini skills install` command above |
+| clone + symlink | `git pull` in the clone |
+
+Claude Code and Codex pick a change up on their own too; Copilot does once
+`autoUpdate` is set as above. The commands are for when you would rather not
+wait. Restart the agent afterwards — an update is applied on the next start.
+
+Where there are two commands, the first refreshes this repo's catalog and the
+second installs the version that catalog now names — refreshing alone changes
+nothing you run. Codex documents no per-plugin command, so there the refresh is
+the whole step.
+
+If the **plugin name or the marketplace name** ever changes, no update command
+helps, because the identifier your install is registered under no longer exists.
+Remove it and install again with the new name.
 
 ## Layout
 
