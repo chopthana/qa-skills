@@ -145,6 +145,5 @@ A skill the whole team should have belongs in that project repo's own
 pip3 install --user openpyxl pyyaml
 ```
 
-It also calls two scripts that live inside the people-admin repo
-(`.agents/skills/testcase-to-domain/scripts/`), so run it from that repo's root
-when converting for that project. Its own `scripts/` are self-contained.
+Its four `scripts/` are self-contained: the skill calls nothing from any other
+repo.

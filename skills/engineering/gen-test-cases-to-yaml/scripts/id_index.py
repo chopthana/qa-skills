@@ -2,7 +2,7 @@
 """Index the IDs already used in the domain test-case tree.
 
 Usage:
-  id_index.py [--root docs/test-cases/domain] [--prefix PREFIX]... [--paths]
+  id_index.py --root DIR [--prefix PREFIX]... [--paths]
 
 Prints every `<PREFIX>-NNN` family found, how many IDs it holds, the highest
 counter in use, any gaps, and the next free counter — so a batch conversion can
@@ -46,7 +46,7 @@ def gaps(numbers):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--root", default="docs/test-cases/domain")
+    ap.add_argument("--root", required=True, help="the domain test-case tree to index")
     ap.add_argument("--prefix", action="append", default=[])
     ap.add_argument("--paths", action="store_true", help="list the files each family lives in")
     args = ap.parse_args()

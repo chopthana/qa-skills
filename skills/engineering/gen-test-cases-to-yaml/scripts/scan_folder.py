@@ -59,7 +59,10 @@ CONTENT_FIELDS = ("tc_id", "title", "steps", "expected", "precondition")
 # can say explicitly that they were excluded by design.
 RUN_METADATA_FIELDS = ("status", "tester", "test_date", "priority", "test_type")
 
-TICKET_RE = re.compile(r"ALC\s*-?\s*(\d{3,6})", re.IGNORECASE)
+# Issue keys as trackers write them: JIRA-123, TCK 1042, ABC-7.  The project
+# part is 2-10 letters so ordinary words do not match; --ticket-pattern
+# overrides it for a tracker that numbers differently.
+TICKET_RE = re.compile(r"\b([A-Za-z]{2,10})\s*-?\s*(\d{1,6})\b")
 
 
 def norm(text):
@@ -82,9 +85,14 @@ def match_field(header):
     return None
 
 
-def ticket_of(path):
-    m = TICKET_RE.search(path.name)
-    return f"ALC-{m.group(1)}" if m else None
+def ticket_of(path, pattern=TICKET_RE):
+    """Best-effort issue key from a filename: `… - ALC - 2275 - …` -> `ALC-2275`."""
+    m = pattern.search(path.name)
+    if not m:
+        return None
+    if m.lastindex and m.lastindex >= 2:
+        return f"{m.group(1).upper()}-{m.group(2)}"
+    return m.group(m.lastindex or 0)
 
 
 def cell_text(value):
@@ -338,8 +346,14 @@ def main():
     ap.add_argument("--json", dest="json_out")
     ap.add_argument("--format", choices=["md", "none"], default="md")
     ap.add_argument("--recursive", action="store_true")
+    ap.add_argument(
+        "--ticket-pattern",
+        help="regex for the issue key in a filename; group 1+2 are joined as KEY-NUM, "
+             "a single group is used verbatim (default: a JIRA-style key)",
+    )
     args = ap.parse_args()
 
+    ticket_re = re.compile(args.ticket_pattern) if args.ticket_pattern else TICKET_RE
     paths = collect_paths(args.targets, args.recursive)
     files, case_rows, unreadable = [], 0, 0
     for path in paths:
@@ -355,7 +369,7 @@ def main():
             {
                 "path": str(path),
                 "name": path.name,
-                "ticket": ticket_of(path),
+                "ticket": ticket_of(path, ticket_re),
                 "status": result["status"],
                 "reason": result.get("reason", ""),
                 "case_rows": count,

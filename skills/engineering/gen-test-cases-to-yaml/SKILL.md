@@ -5,11 +5,11 @@ description: Batch-convert a whole folder of QA test-case files (a sprint drop o
 
 # Folder of QA test cases → domain YAML (batch import)
 
-One sprint drop in, one import out. The single-document version of this job is
-the `testcase-to-domain` skill; this skill is the folder-level pipeline around
-it: inventory the whole folder, convert every workbook into a **staging
-folder**, prove row-by-row that nothing was lost, then move the staged tree
-into the repo **in one pass**.
+One sprint drop in, one import out: inventory the whole folder, convert every
+workbook into a **staging folder**, prove row-by-row that nothing was lost,
+then move the staged tree into the repo **in one pass**. Converting a single
+pasted document is a different, smaller job — this skill is the folder-level
+pipeline.
 
 The target tree's own `README.md` (step 2 finds it, as `$ROOT/README.md`) is
 the canonical format. If this skill ever disagrees with it, follow that README
@@ -30,12 +30,14 @@ is assumed here. What to look for in its output:
 - a **ticket key**, usually in the filename — the traceability key to carry into
   the YAML header comments
 
-> **Worked example** — CJ Express QA drops are named
-> `Test Case - ALC - <ticket> - [People Tech][<area>] <topic>.xlsx`, with a
-> `list` legend sheet and a `TestResult` sheet whose header is row 4:
+> **Worked example** — one common Thai QA template names its files
+> `Test Case - <TICKET> - [<team>][<area>] <topic>.xlsx`, with a `list` legend
+> sheet and a `TestResult` sheet whose header is row 4:
 > `ลำดับ` / `ประเภทการทดสอบ` / `TC ID` / `หัวข้อ` /
 > `กรณีทดสอบและขั้นตอนการทดสอบ` / `ผลการทดสอบที่คาดหวัง` / `สถานะ` / `Tester` /
 > `Test date` / `หมายเหตุ` / `ระดับความสำคัญ` / `Remark for Pass with Condition`.
+> `scan_folder.py` maps those headers by meaning, so an English or mixed sheet
+> works the same way.
 
 ## Workflow
 
@@ -99,12 +101,11 @@ Then write `$STG/plan.md`: one line per source file → target
   (`<DOMAIN>-<FEATURE>-NNN`) or with the feature, and whether they carry a topic
   segment. Match the dominant shape; do not introduce a third.
 
-> **Worked example** — in the CJ Express people-admin repo `$ROOT` is
-> `docs/test-cases/domain/`, and the lookup returns domains `configuration/`,
-> `permission/`, `incentive/`, `shift/` with families such as
-> `CONFIG-INCENTIVE-<VARIANT>`, `PERMISSION-INCENTIVE-<VARIANT>`,
-> `AUDIT-INCENTIVE`, `INCENTIVE-<VARIANT>-<TOPIC>`. That is what one repo's
-> vocabulary looks like, not a vocabulary to apply elsewhere.
+> **Worked example** — in one repo the lookup returns
+> `$ROOT` = `docs/test-cases/domain/`, domains `billing/`, `permission/`,
+> `reporting/`, and families like `CONFIG-BILLING-<VARIANT>`,
+> `PERMISSION-<AREA>`, `REPORTING-<TOPIC>`. Another repo will answer
+> differently. Read it every time; never carry this answer over.
 
 #### The sheet owns the ID
 
@@ -123,7 +124,7 @@ a decision of yours** — and every question arrives with a concrete proposal:
 | --- | --- |
 | no `TC ID` column, or blank cells | the prefix you would use, derived from the placement (`shift/branch-setting/` → `SHIFT-BRANCH-SETTING-001..0NN`), numbered in sheet-row order |
 | one ID reused on several rows (e.g. 15 sorting rows all `Branch-setting-042`) | keeping the first and numbering the rest on from it (`042..056`), or having QA renumber the sheet — say which rows collide |
-| an ID that cannot be a case id — lowercase, spaces, no `-NNN` suffix (the format is `^[A-Z0-9]+(?:-[A-Z0-9]+)*-\d{3}$`) | the normalized spelling (`Config-Incentive-Sale-003` → `CONFIG-INCENTIVE-SALE-003`) |
+| an ID that cannot be a case id — lowercase, spaces, no `-NNN` suffix (the format is `^[A-Z0-9]+(?:-[A-Z0-9]+)*-\d{3}$`) | the normalized spelling (`Search-Customer-003` → `SEARCH-CUSTOMER-003`) |
 | an ID already used elsewhere in the tree (`id_index.py` reports it) | the next free counter in that family, naming the file that already holds it |
 
 Ask once, for all of them together, with the full list in the question — never
@@ -177,35 +178,35 @@ Three lines are not optional, whatever the tree's style:
   English — e.g. that backticked text is the original-language UI label while
   the prose around it is translated (see step 4).
 
-> **Worked example** — a Thai-language workbook in the people-admin repo
-> produces this, where the backticks hold the exact Thai UI labels:
+> **Worked example** — a Thai-language workbook produces this, where the
+> backticks hold the exact Thai UI labels and the prose around them is English:
 >
 > ```yaml
-> # Converted from "Test Case - ALC - 2276 - [People Tech][Shift] ตั้งค่าสาขา — Search bar.xlsx" (sheet TestResult)
-> # Topic: Branch search bar — code/name field validation (TC SHIFT-BRANCH-SETTING-028..031)
+> # Converted from "Test Case - TCK-1042 - [QA][Search] ค้นหาลูกค้า.xlsx" (sheet TestResult)
+> # Topic: Customer search — code/name field validation (TC SEARCH-CUSTOMER-001..004)
 > # Thai text in backticks is the exact UI label / message; English around it is a translation.
 > cases:
->   # Source: ALC-2276 SHIFT-BRANCH-SETTING-028
->   - id: "SHIFT-BRANCH-SETTING-028"
->     scenario: "Search by branch code or name (`รหัส / ชื่อสาขา`) with only 3 characters"
+>   # Source: TCK-1042 SEARCH-CUSTOMER-001
+>   - id: "SEARCH-CUSTOMER-001"
+>     scenario: "Search by customer code or name (`รหัส / ชื่อลูกค้า`) with only 3 characters"
 >     preconditions:
->       - "A user who can open Branch working shifts (`กะการทำงานของสาขา`) > Branch settings (`ตั้งค่าสาขา`)"
+>       - "A user who can open Customers (`ลูกค้า`) > Search (`ค้นหาลูกค้า`)"
 >     steps:
 >       - "Log in"
->       - "Click Branch settings (`ตั้งค่าสาขา`)"
->       - "Enter `001` in the branch code/name field"
+>       - "Click Search (`ค้นหาลูกค้า`)"
+>       - "Enter `001` in the code/name field"
 >       - "Click Search (`ค้นหา`)"
 >     expectations:
->       - "An error message is shown under the field, e.g. `ระบุอย่างน้อย 4 ตัวอักษร เช่น 0001 , สีลม...`"
->       - "The branch code/name field is outlined in red"
+>       - "An error message is shown under the field, e.g. `ระบุอย่างน้อย 4 ตัวอักษร`"
+>       - "The code/name field is outlined in red"
 > ```
 
 Record each row in `$STG/mapping.csv` as you go:
 
 ```csv
 source_file,sheet,source_row,source_tc_id,new_id,target_path,note
-Test Case - ALC - 2276 - ....xlsx,TestResult,5,SHIFT-BRANCH-SETTING-028,SHIFT-BRANCH-SETTING-028,shift/branch-setting/search-field-validation.yaml,
-Test Case - ALC - 2276 - ....xlsx,TestResult,20,Branch-setting-042,SHIFT-BRANCH-SETTING-043,shift/branch-setting/column-sorting.yaml,"source TC ID reused on rows 19-33; user approved numbering 042..056"
+Test Case - TCK-1042 - ....xlsx,TestResult,5,SEARCH-CUSTOMER-001,SEARCH-CUSTOMER-001,search/customer/field-validation.yaml,
+Test Case - TCK-1042 - ....xlsx,TestResult,20,SEARCH-CUSTOMER-010,SEARCH-CUSTOMER-011,search/customer/column-sorting.yaml,"source TC ID reused on rows 19-33; user approved numbering 010..024"
 ```
 
 `source_tc_id` and `new_id` are normally the same string — the sheet owns the
@@ -245,7 +246,7 @@ not convert gets `new_id` = `SKIPPED` and a reason in `note`.
   not one particular rendering guess. `ไม่แสดง table` on a page whose table
   chrome always renders → `No data rows are shown.`
 - **Data values are data.** Branch codes, times, headcounts, amounts, dates and
-  the BigQuery/source-table names a cell mentions (`MP_Daily_Oper`) belong in
+  the source-table or warehouse names a cell mentions belong in
   the case — in `preconditions` when they are setup, in `expectations` when
   they are the assertion.
 - **`หมายเหตุ` / `Remark` cells**: if the text adds testable information, turn
@@ -275,8 +276,7 @@ seen and accepted those files and rows.
 Then the format gate, against the live tree so IDs are unique repo-wide:
 
 ```bash
-python3 .agents/skills/testcase-to-domain/scripts/validate.py \
-  --root "$ROOT" "$STG/tree"
+python3 <skill-dir>/scripts/validate_cases.py --root "$ROOT" "$STG/tree"
 ```
 
 Fix everything both report. Do not proceed to step 6 with either one red.
@@ -287,8 +287,7 @@ Only once steps 5's gates are green, move the whole staged tree in at once:
 
 ```bash
 rsync -a "$STG/tree/" "$ROOT"/              # or: cp -R
-python3 .agents/skills/testcase-to-domain/scripts/validate.py \
-  --root "$ROOT" "$ROOT"
+python3 <skill-dir>/scripts/validate_cases.py --root "$ROOT"
 git status --short "$ROOT"
 ```
 
@@ -297,8 +296,9 @@ after the merge. Check `git status` against your plan: the count of new files
 must match, and no existing file may be modified unless the plan said so.
 
 This is a docs-only change, so it goes straight to `main` with one commit for
-the whole sprint drop (`docs(test-cases): ALC-2275, ALC-2276, ALC-2426 sprint 16
-domain cases`) — no branch, no MR. Ask for the go-ahead before committing.
+the whole sprint drop (`docs(test-cases): <tickets> sprint <N> domain cases`) —
+no branch, no MR, when that is the repo's convention for docs. Ask for the
+go-ahead before committing.
 
 ### 7. Report
 
@@ -335,17 +335,11 @@ Next to this SKILL.md (use the skill base directory shown when the skill loads):
   already in use, max counter, gaps, next free counter, duplicates.
 - `scripts/reconcile.py --source source.json --map mapping.csv --staging DIR`
   — source-row ↔ mapping ↔ staged-YAML accounting. Exit 0 = nothing lost.
+- `scripts/validate_cases.py --root DIR [paths…] [--skip NAME] [--id-pattern RE]`
+  — the shape gate: YAML parses, single-case vs `cases` array (never mixed and
+  no stray keys), the five fields with their types and no empty strings, the ID
+  format, and ID uniqueness across `--root`. Exit 0 = clean.
 
-Reused from the `testcase-to-domain` skill, which lives **inside the
-people-admin repo**, not next to this skill. Both paths are relative to that
-repo's root, so run them from there:
-
-- `.agents/skills/testcase-to-domain/scripts/validate.py` — the five-field
-  schema, shape, ID format and tree-wide uniqueness gate.
-- `.agents/skills/testcase-to-domain/scripts/read_xlsx.py` — raw whole-sheet
-  dump, for when a workbook's layout defeats `scan_folder.py`'s header
-  detection.
-
-In a repo that has no `testcase-to-domain`, `reconcile.py` still gates the
-no-loss accounting, but the schema gate is missing: check the five fields and
-ID uniqueness another way and say in the report that you did.
+All four are self-contained: this skill calls nothing from any other repo. When
+`$ROOT/README.md` documents a different schema, follow it and say so — and pass
+`--id-pattern` if its IDs are spelled another way.
