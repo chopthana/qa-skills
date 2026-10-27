@@ -25,7 +25,7 @@ Pick **one** route per agent — installing two gives you every skill twice.
 <summary><strong>Claude Code</strong></summary>
 
 ```bash
-claude plugin marketplace add ppthana/Chop-thanakorn-skills
+claude plugin marketplace add ppthana/qa-skills
 claude plugin install chop-skills@ppthana
 ```
 
@@ -37,7 +37,7 @@ Updates itself. To pull a change by hand: `claude plugin update chop-skills`.
 <summary><strong>Codex</strong></summary>
 
 ```bash
-codex plugin marketplace add ppthana/Chop-thanakorn-skills
+codex plugin marketplace add ppthana/qa-skills
 codex plugin add chop-skills@ppthana
 ```
 
@@ -49,7 +49,7 @@ Updates at startup.
 <summary><strong>GitHub Copilot</strong> (CLI and VS Code)</summary>
 
 ```bash
-copilot plugin marketplace add ppthana/Chop-thanakorn-skills
+copilot plugin marketplace add ppthana/qa-skills
 copilot plugin install chop-skills@ppthana
 ```
 
@@ -59,7 +59,7 @@ Then once, in `~/.copilot/settings.json`:
 {
   "extraKnownMarketplaces": {
     "ppthana": {
-      "source": { "source": "github", "repo": "ppthana/Chop-thanakorn-skills" },
+      "source": { "source": "github", "repo": "ppthana/qa-skills" },
       "autoUpdate": true
     }
   }
@@ -67,7 +67,7 @@ Then once, in `~/.copilot/settings.json`:
 ```
 
 In VS Code: **Chat: Install Plugin From Source**, then
-`https://github.com/ppthana/Chop-thanakorn-skills`.
+`https://github.com/ppthana/qa-skills`.
 
 </details>
 
@@ -75,7 +75,7 @@ In VS Code: **Chat: Install Plugin From Source**, then
 <summary><strong>Gemini CLI</strong> (manual updates)</summary>
 
 ```bash
-gemini skills install https://github.com/ppthana/Chop-thanakorn-skills.git --path skills/engineering
+gemini skills install https://github.com/ppthana/qa-skills.git --path skills/engineering
 ```
 
 Re-run to update.
@@ -86,7 +86,7 @@ Re-run to update.
 <summary><strong>Any other agent, or editable files</strong> (manual updates)</summary>
 
 ```bash
-npx skills@latest add ppthana/Chop-thanakorn-skills -a <agent>   # cursor, opencode, windsurf, amp, …
+npx skills@latest add ppthana/qa-skills -a <agent>   # cursor, opencode, windsurf, amp, …
 ```
 
 `npx skills` fetches through the public skills.sh service, so it is the one
@@ -94,8 +94,8 @@ route that will **not** reach this private repo. Until the repo is public, clone
 and link instead:
 
 ```bash
-git clone https://github.com/ppthana/Chop-thanakorn-skills.git ~/Desktop/Chop-thanakorn-skills
-ln -sfn ~/Desktop/Chop-thanakorn-skills/skills/engineering/gen-test-cases-to-yaml \
+git clone https://github.com/ppthana/qa-skills.git ~/Desktop/qa-skills
+ln -sfn ~/Desktop/qa-skills/skills/engineering/gen-test-cases-to-yaml \
         ~/.agents/skills/gen-test-cases-to-yaml
 ```
 
@@ -113,6 +113,7 @@ Restart the agent, or reload its skills, after installing.
 ## Layout
 
 ```text
+.agents/install-block.md   the canonical install wording — change it there first
 .claude-plugin/
 ├── marketplace.json   catalog: marketplace `ppthana`, plugin source "./"
 └── plugin.json        plugin `chop-skills`: version and the skills it ships
@@ -122,7 +123,8 @@ skills/<category>/<skill-name>/
 ```
 
 Adding a skill: drop it under `skills/<category>/`, add its path to
-`plugin.json`'s `skills` array, bump `version`, push. Validate first:
+`plugin.json`'s `skills` array, bump `version` (managed installs only reinstall
+when it changes), push. Validate first:
 
 ```bash
 claude plugin validate .
