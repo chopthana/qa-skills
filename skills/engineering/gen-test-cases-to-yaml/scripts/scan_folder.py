@@ -118,7 +118,7 @@ def match_field(header):
 
 
 def ticket_of(path, pattern=TICKET_RE):
-    """Best-effort issue key from a filename: `… - ALC - 2275 - …` -> `ALC-2275`."""
+    """Best-effort issue key from a filename: `… - QAP - 1041 - …` -> `QAP-1041`."""
     m = pattern.search(path.name)
     if not m:
         return None

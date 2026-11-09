@@ -130,7 +130,7 @@ a decision of yours** — and every question arrives with a concrete proposal:
 
 | What the sheet has | Ask, proposing |
 | --- | --- |
-| no `TC ID` column, or blank cells | the prefix you would use, derived from the placement (`shift/branch-setting/` → `SHIFT-BRANCH-SETTING-001..0NN`), numbered in sheet-row order |
+| no `TC ID` column, or blank cells | the prefix you would use, derived from the placement (`promo/code-setting/` → `PROMO-CODE-SETTING-001..0NN`), numbered in sheet-row order |
 | one ID reused on several rows (e.g. 15 sorting rows all `Branch-setting-042`) | keeping the first and numbering the rest on from it (`042..056`), or having QA renumber the sheet — say which rows collide |
 | an ID that cannot be a case id — lowercase, spaces, no `-NNN` suffix (the format is `^[A-Z0-9]+(?:-[A-Z0-9]+)*-\d{3}$`) | the normalized spelling (`Search-Customer-003` → `SEARCH-CUSTOMER-003`) |
 | an ID already used elsewhere in the tree (`id_index.py` reports it) | the next free counter in that family, naming the file that already holds it |
