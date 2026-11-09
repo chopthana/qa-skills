@@ -12,6 +12,7 @@ syntax, so these work with any agent that reads Agent Skills.
 | Skill | What it does |
 | --- | --- |
 | [`gen-test-cases-to-yaml`](skills/engineering/gen-test-cases-to-yaml/SKILL.md) | Batch-convert a whole sprint folder of QA test-case workbooks into a repo's own domain test-case YAML tree — translated to English, staged in one folder, reconciled row-by-row so nothing is dropped, imported in one pass. |
+| [`subagent-driven-testcases`](skills/engineering/subagent-driven-testcases/SKILL.md) | Run a bulk test-case job as a controller plus fan-out subagents: survey the sources into one coverage inventory, cut disjoint slices, dispatch an author per slice and a reviewer after it, then merge and renumber into one deliverable. Drives whichever producer skill writes the cases — it writes none itself. Automating a suite is its second branch: shared fixtures built serially first, specs fanned out after, and coverage reported per case in buckets (green / automated / parked / missing) instead of one flattering percentage. |
 
 ## Installation
 
@@ -146,6 +147,7 @@ Remove it and install again with the new name.
 └── plugin.json        plugin `qa-skills`: version and the skills it ships
 skills/<category>/<skill-name>/
 ├── SKILL.md           frontmatter (name + description) and the workflow
+├── references/        reference the SKILL.md points at, loaded on demand
 └── scripts/           helpers the SKILL.md calls
 ```
 
@@ -174,3 +176,8 @@ pip3 install --user openpyxl pyyaml
 
 Its four `scripts/` are self-contained: the skill calls nothing from any other
 repo.
+
+`subagent-driven-testcases` needs Python 3 and a shell, nothing else — its three
+`scripts/` are stdlib only. It does need an agent that can dispatch subagents,
+and whichever **producer** skill actually writes the cases for that run
+(`gen-test-cases-to-yaml` is one); the producer's own requirements apply.
