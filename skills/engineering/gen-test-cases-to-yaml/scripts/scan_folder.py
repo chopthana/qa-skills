@@ -18,6 +18,7 @@ Needs openpyxl for Excel input; prints install instructions if missing.
 
 import argparse
 import csv
+import hashlib
 import json
 import re
 import sys
@@ -58,6 +59,37 @@ CONTENT_FIELDS = ("tc_id", "title", "steps", "expected", "precondition")
 # Fields that are QA run tracking, not case content. Named here so the report
 # can say explicitly that they were excluded by design.
 RUN_METADATA_FIELDS = ("status", "tester", "test_date", "priority", "test_type")
+
+# Fields hashed into a case's fingerprint. Deliberately the testable content
+# only: not the sheet row number, not run metadata. Two scans of the same case
+# produce the same fingerprint even when QA inserted rows above it, so a
+# re-run can tell "unchanged, just moved" from "edited".
+FINGERPRINT_FIELDS = ("tc_id", "title", "precondition", "steps", "expected", "note", "remark")
+
+
+def _fingerprint(parts):
+    payload = "\x1f".join(str(p or "").strip() for p in parts)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def case_fingerprint(record):
+    return _fingerprint(record.get(f) for f in FINGERPRINT_FIELDS)
+
+
+def file_fingerprint(sheets):
+    """Order-independent fingerprint of every case row in a file.
+
+    Sorted by each row's own fingerprint so reordering sheets or rows does not
+    change the file fingerprint — only real content edits do.
+    """
+    hashes = sorted(
+        case_fingerprint(rec)
+        for sheet in sheets
+        if sheet.get("kind") == "cases"
+        for rec in sheet.get("rows", [])
+    )
+    return _fingerprint(hashes)
+
 
 # Issue keys as trackers write them: JIRA-123, TCK 1042, ABC-7.  The project
 # part is 2-10 letters so ordinary words do not match; --ticket-pattern
@@ -168,6 +200,7 @@ def extract_rows(rows, header_index, mapping, headers):
             elif value:
                 record["extra"][header or f"column{j + 1}"] = value
         if any(record[f] for f in CONTENT_FIELDS):
+            record["fingerprint"] = case_fingerprint(record)
             out.append(record)
     return out
 
@@ -373,6 +406,7 @@ def main():
                 "status": result["status"],
                 "reason": result.get("reason", ""),
                 "case_rows": count,
+                "fingerprint": file_fingerprint(result["sheets"]),
                 "sheets": result["sheets"],
             }
         )

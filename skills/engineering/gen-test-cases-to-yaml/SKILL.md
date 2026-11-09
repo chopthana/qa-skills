@@ -41,9 +41,15 @@ is assumed here. What to look for in its output:
 
 ## Workflow
 
-Work in a staging directory for the whole run; use the session scratchpad
-directory (or `<repo>/.test-case-staging/<sprint>` when there is none). Call it
-`$STG` below. Nothing lands in the repo until step 6.
+Work in a staging directory for the whole run. Use a **persistent** path —
+`<repo>/.test-case-staging/<sprint>` (gitignore it) — not a session scratchpad:
+the baseline scan and the mapping from a previous run are what make a re-run
+cheap, and a scratchpad is gone by then. Call it `$STG` below. Nothing lands in
+the repo tree until step 6 (the staging dir itself stays out of git).
+
+If the user's drop lives outside the repo and they prefer not to create files in
+it, use a stable path beside the source folder instead — anything that survives
+between runs. Just never a temp dir that may be cleared.
 
 ### 1. Inventory the folder
 
@@ -53,7 +59,9 @@ python3 <skill-dir>/scripts/scan_folder.py "<source folder>" \
 ```
 
 `source.json` is the accounting baseline; `source.md` is the full content dump
-to convert from — read it, do not re-open the workbooks by hand.
+to convert from — read it, do not re-open the workbooks by hand. **Keep
+`source.json`** — it is also the baseline for the next re-run (step 8), so
+overwrite it only through `scan_folder.py`, never delete it.
 
 The script exits non-zero when a file is unreadable (password-protected or
 legacy-encrypted workbooks are common in these drops, e.g. `CDFV2 Encrypted`).
@@ -312,6 +320,75 @@ go-ahead before committing.
 - files that could not be read, rows deliberately not converted, with reasons
 - the run-metadata columns excluded by design
 
+### 8. Re-running when the source changes
+
+QA edits a workbook and asks for the drop again. **Do not convert the whole
+folder again.** `$STG/source.json` and `$STG/mapping.csv` from the previous run
+are the baseline; the goal is to re-touch only the rows that actually changed.
+
+1. Re-scan into a **new** file, keeping the baseline:
+
+   ```bash
+   cp "$STG/source.json" "$STG/source.prev.json"
+   python3 <skill-dir>/scripts/scan_folder.py "<source folder>" \
+     --json "$STG/source.json" > "$STG/source.md"
+   ```
+
+   Use the same targets and flags as the first run, so the two scans are
+   comparable.
+
+2. Diff baseline → current:
+
+   ```bash
+   python3 <skill-dir>/scripts/diff_scan.py \
+     --old "$STG/source.prev.json" --new "$STG/source.json" \
+     --json "$STG/changes.json" > "$STG/changes.md"
+   ```
+
+   Read `changes.md`. Per file it says `unchanged` (reuse the staged YAML
+   as-is), `changed` (re-convert only the listed added/changed rows), `added`,
+   or `removed`. Per row it distinguishes a case that merely **moved** (same
+   content, new row number → `unchanged`) from one whose content was **edited**
+   (`changed`), because rows are matched by the sheet's `TC ID` and then by a
+   content fingerprint — never by row number.
+
+3. Convert only the delta:
+   - **`unchanged` file** — copy the previous `$STG/tree/<path>` over verbatim;
+     open neither `source.md` nor the workbook for it.
+   - **`changed` file** — carry the `unchanged` cases over untouched and
+     re-translate only the `added` / `changed` rows, folding them back into the
+     same target file.
+   - **`added` file** — a normal step-1..3 conversion.
+   - **`removed` file** — delete its staged YAML (and drop its `mapping.csv`
+     rows). Confirm first that no other source file feeds that target file.
+
+   Update `mapping.csv` in place: append rows for added cases, adjust
+   `source_row` for moved/changed ones, set `new_id` = `SKIPPED` (with a reason)
+   for removed source rows. Unchanged rows need no edit — `reconcile.py`
+   resolves them by `TC ID`, so a shifted row number does not invalidate them.
+
+4. Re-run the same two gates (step 5) on the merged state, then import **only
+   what changed** — copy the changed/added target files and delete the removed
+   ones, instead of rsyncing the whole tree:
+
+   ```bash
+   python3 <skill-dir>/scripts/reconcile.py \
+     --source "$STG/source.json" --map "$STG/mapping.csv" --staging "$STG/tree"
+   python3 <skill-dir>/scripts/validate_cases.py --root "$ROOT" "$STG/tree"
+   # then: copy just the changed/added files in, rm the removed ones
+   python3 <skill-dir>/scripts/validate_cases.py --root "$ROOT"
+   ```
+
+   Note that `reconcile.py` keys a mapping row by `source_tc_id` when that TC ID
+   is unique in its sheet, falling back to `source_row` otherwise (the reused-ID
+   case from step 2). That is what lets a re-run skip re-converting cases that
+   only moved.
+
+Anything the diff cannot classify — a row whose TC ID is both reused and edited,
+a file that was rewritten wholesale — falls back to a normal conversion for that
+row or file. Say so in the report; a re-run must still satisfy "never drop a
+case".
+
 ## Never drop a case
 
 Every case row in the inventory ends up either as a staged case in
@@ -330,16 +407,24 @@ Next to this SKILL.md (use the skill base directory shown when the skill loads):
 - `scripts/scan_folder.py <folder|file>… [--json OUT] [--format md|none] [--recursive]`
   — extracts every case row from .xlsx/.xlsm/.csv/.tsv; maps Thai and English
   column headers by meaning; resolves merged cells; flags unreadable files with
-  remediation. Exit 1 if any file is unreadable.
+  remediation. Each row and each file carries a content `fingerprint` (testable
+  fields only, row number excluded) so a later scan can be diffed. Exit 1 if any
+  file is unreadable.
+- `scripts/diff_scan.py --old baseline.json --new current.json [--json OUT] [--format md|none]`
+  — classifies each file unchanged/changed/added/removed and each row
+  unchanged/changed/added/removed, matching rows by unique TC ID then by
+  fingerprint, so a moved-but-unchanged case stays `unchanged`. Drives the
+  incremental re-run (step 8).
 - `scripts/id_index.py [--root DIR] [--prefix P]… [--paths]` — ID families
   already in use, max counter, gaps, next free counter, duplicates.
 - `scripts/reconcile.py --source source.json --map mapping.csv --staging DIR`
-  — source-row ↔ mapping ↔ staged-YAML accounting. Exit 0 = nothing lost.
+  — source-row ↔ mapping ↔ staged-YAML accounting; matches a mapping row by
+  `source_tc_id` (unique TC ID) then by `source_row`. Exit 0 = nothing lost.
 - `scripts/validate_cases.py --root DIR [paths…] [--skip NAME] [--id-pattern RE]`
   — the shape gate: YAML parses, single-case vs `cases` array (never mixed and
   no stray keys), the five fields with their types and no empty strings, the ID
   format, and ID uniqueness across `--root`. Exit 0 = clean.
 
-All four are self-contained: this skill calls nothing from any other repo. When
+All of these are self-contained: this skill calls nothing from any other repo. When
 `$ROOT/README.md` documents a different schema, follow it and say so — and pass
 `--id-pattern` if its IDs are spelled another way.
