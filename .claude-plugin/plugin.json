@@ -1,7 +1,7 @@
 {
   "name": "qa-skills",
-  "version": "2.2.0",
-  "description": "Personal agent skills for QA test cases: batch-convert workbooks into a repo's own domain YAML reconciled row-by-row, and run a bulk test-case job as a controller plus fan-out subagents.",
+  "version": "2.3.0",
+  "description": "Personal agent skills for QA: write test cases from a spec and a design prototype or a screenshot, audit a set that already exists, batch-convert a sprint's workbooks into a repo's own domain YAML, explore a UI for bugs, check a design handoff, and run a bulk test-case job across fan-out subagents.",
   "author": {
     "name": "Thanakorn Chanprasit",
     "url": "https://github.com/chopthana"
@@ -15,10 +15,17 @@
     "yaml",
     "batch-conversion",
     "subagents",
-    "orchestration"
+    "orchestration",
+    "coverage",
+    "exploratory-testing"
   ],
   "skills": [
+    "./skills/engineering/create-test-cases-spec",
+    "./skills/engineering/design-handoff-check",
     "./skills/engineering/gen-test-cases-to-yaml",
-    "./skills/engineering/subagent-driven-testcases"
+    "./skills/engineering/spec-prototype-to-testcases",
+    "./skills/engineering/subagent-driven-testcases",
+    "./skills/engineering/testcase-coverage-audit",
+    "./skills/engineering/ui-explore"
   ]
 }

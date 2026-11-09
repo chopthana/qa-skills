@@ -9,10 +9,29 @@ syntax, so these work with any agent that reads Agent Skills.
 
 ## Skills
 
+Seven skills covering one QA workflow, in the order it runs.
+
+**Writing cases**
+
 | Skill | What it does |
 | --- | --- |
-| [`gen-test-cases-to-yaml`](skills/engineering/gen-test-cases-to-yaml/SKILL.md) | Batch-convert a whole sprint folder of QA test-case workbooks into a repo's own domain test-case YAML tree — translated to English, staged in one folder, reconciled row-by-row so nothing is dropped, imported in one pass. |
-| [`subagent-driven-testcases`](skills/engineering/subagent-driven-testcases/SKILL.md) | Run a bulk test-case job as a controller plus fan-out subagents: survey the sources into one coverage inventory, cut disjoint slices, dispatch an author per slice and a reviewer after it, then merge and renumber into one deliverable. Drives whichever producer skill writes the cases — it writes none itself. Automating a suite is its second branch: shared fixtures built serially first, specs fanned out after, and coverage reported per case in buckets (green / automated / parked / missing) instead of one flattering percentage. |
+| [`create-test-cases-spec`](skills/engineering/create-test-cases-spec/SKILL.md) | A UI screenshot plus a Jira/PRD spec becomes reviewed test cases, section by section, each step confirmed with you before the next — delivered as text ready to paste into Excel. |
+| [`spec-prototype-to-testcases`](skills/engineering/spec-prototype-to-testcases/SKILL.md) | A ticket plus its published design prototype becomes a workbook in your team's own template. Decompiles the prototype bundle for the strings as built, compares them against the spec, and raises every disagreement as a question instead of picking a side. |
+| [`subagent-driven-testcases`](skills/engineering/subagent-driven-testcases/SKILL.md) | Runs a bulk job as a controller plus fan-out subagents: one coverage inventory, disjoint slices, an author per slice and a reviewer after it, then a merge that owns the IDs. Drives whichever skill above writes the cases — it writes none itself. Automating a suite is its second branch, with coverage reported per case in buckets (green / automated / parked / missing) instead of one flattering percentage. |
+
+**Checking what exists**
+
+| Skill | What it does |
+| --- | --- |
+| [`testcase-coverage-audit`](skills/engineering/testcase-coverage-audit/SKILL.md) | Audits a set already written: the cases that cannot be executed as written (an expected result that contradicts itself, two data values in one row, an assertion the steps never reach) and the cases missing because nobody traced the screen's reachable states. |
+| [`design-handoff-check`](skills/engineering/design-handoff-check/SKILL.md) | Reads a published design handoff, compares it against the running app and the cases you already have, and sorts the result into covered / gap / mismatch / question / not-prototyped. |
+| [`ui-explore`](skills/engineering/ui-explore/SKILL.md) | Plays the app in a browser the way a real person who tries things does — every control, edge values, orders nobody planned for — and reports findings with repro steps, not specs. |
+
+**Moving cases around**
+
+| Skill | What it does |
+| --- | --- |
+| [`gen-test-cases-to-yaml`](skills/engineering/gen-test-cases-to-yaml/SKILL.md) | Batch-converts a whole sprint folder of workbooks into a repo's own domain test-case YAML tree — translated to English, staged in one folder, reconciled row-by-row so nothing is dropped, imported in one pass. Re-runs convert only the delta. |
 
 ## Installation
 
@@ -167,17 +186,27 @@ A skill the whole team should have belongs in that project repo's own
 
 ## Requirements
 
-`gen-test-cases-to-yaml` needs Python 3 with `openpyxl` (reading .xlsx) and
-`PyYAML`:
+Python 3 throughout. The skills that read or write `.xlsx` —
+`gen-test-cases-to-yaml`, `spec-prototype-to-testcases`,
+`testcase-coverage-audit` — need `openpyxl`, and `gen-test-cases-to-yaml` also
+needs `PyYAML`:
 
 ```bash
 pip3 install --user openpyxl pyyaml
 ```
 
-Its four `scripts/` are self-contained: the skill calls nothing from any other
-repo.
+`subagent-driven-testcases` and `spec-prototype-to-testcases`'s prototype
+reader are stdlib only. Every `scripts/` directory is self-contained: no skill
+here calls code from another repo.
 
-`subagent-driven-testcases` needs Python 3 and a shell, nothing else — its three
-`scripts/` are stdlib only. It does need an agent that can dispatch subagents,
-and whichever **producer** skill actually writes the cases for that run
-(`gen-test-cases-to-yaml` is one); the producer's own requirements apply.
+Two skills need more than Python. `subagent-driven-testcases` needs an agent
+that can dispatch subagents, plus whichever **producer** skill writes the cases
+for that run — the producer's own requirements then apply. `ui-explore` and the
+app-comparison half of `design-handoff-check` need a browser the agent can
+drive.
+
+**What you supply per run, because no skill here hardcodes it:** the prototype
+or handoff base URL (`spec-prototype-to-testcases` reads `PROTOTYPE_BASE_URL`
+or `--base` and ships with no default host), your team's workbook template and
+its naming convention, the repo's test-case root, and the TC ID family already
+in use. Each skill discovers or asks; see [ADR 3](.agents/adr/0003-skills-carry-no-project-specific-paths.md).

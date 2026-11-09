@@ -1,0 +1,63 @@
+{
+  "skill_name": "spec-prototype-to-testcases",
+  "_note": "Worked-example data only. The feature, ticket keys, hosts and scope names below are invented (ADR 3): swap in your own ticket and prototype when running these.",
+  "evals": [
+    {
+      "id": 0,
+      "eval_name": "add-promo-code-ac-coverage",
+      "prompt": "Ticket QAP-XXXX 'เพิ่มรหัสโปรโมชัน (Add new Promo Code)' is pasted below with its acceptance criteria. The design prototype is at https://prototypes.example.com/app/index.html#promo-code-settings . Produce QA test cases in our Test Case template, focused only on what the ticket describes.",
+      "files": [],
+      "assertions": [
+        "Every acceptance criterion in the ticket (AC-ADD-01 … AC-ADD-18) maps to at least one test case; none is dropped.",
+        "The workbook reproduces the team's template layout: both sheets in the template's own order and names, the header on the template's header row, data starting the row after it, the running-number formula, the test-type and priority data validations, and the header fill.",
+        "TC IDs follow <AREA>-<FEATURE>-NNN and are unique and sequential (PROMO-CODE-SETTING-…).",
+        "Steps and expected results are numbered multi-line strings (`1. …\\n2. …`), not single blobs.",
+        "Cases that depend on a spec-vs-prototype disagreement are flagged in the note column with a marker and a question reference, while normal cases carry the template's own 'normal case' wording.",
+        "The default output is the workbook only; the gap report / open-questions list is stated in the chat (or written to a .md only if the user opted in), each question phrased as a decision for the team.",
+        "No case is invented for prototype-only features absent from the ticket (e.g. the edit flow), unless the ticket includes them.",
+        "No extra side files (JSON source, gap report) are written unless the user asked for them.",
+        "The prototype base URL is taken from the link in the prompt and passed to fetch_prototype.py; the script is never called expecting a built-in default."
+      ]
+    },
+    {
+      "id": 1,
+      "eval_name": "matching-rule-boundary",
+      "prompt": "(same ticket) Cover the matching rule: one promo code may hold any number of discount-tier values for a single campaign type, and within a Region a (campaign type, tier) pair maps to exactly one promo code.",
+      "files": [],
+      "assertions": [
+        "There is a case asserting the tier dropdown hides values already paired for that (Region, campaign type).",
+        "There is a case asserting a fully-paired campaign type yields an empty dropdown (no selectable value).",
+        "There is a case asserting the same campaign type is independent across Regions (pairing in Region A does not hide options in Region B).",
+        "There is a case asserting changing the campaign type clears already-selected tiers and reloads the options.",
+        "There is a case asserting a same-tier-different-weekday branch (e.g. Friday 10%, other days 5%) contributes each distinct daily value as its own separate option."
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "asks-before-generating",
+      "prompt": "Ticket QAP-1041 '[Catalog][Promo] ตั้งค่ารหัสโปรโมชัน — Add Promo Code' with its AC is pasted. Prototype: …/#promo-code-settings . Make the test cases.",
+      "files": [],
+      "assertions": [
+        "Before generating, the assistant works out the workbook naming convention from the team's existing files (or asks), proposes a concrete name, and asks the user to confirm the ticket key and card name.",
+        "The assistant does not assert a naming pattern it did not read or confirm.",
+        "Before generating, the assistant proposes a TC ID prefix and asks the user to confirm it or choose another (suggestion offered as an option).",
+        "Before generating, the assistant asks whether the user wants the optional side files (JSON source, gap report) and defaults to workbook-only.",
+        "The assistant does not pick a file name, TC ID prefix, or write extra files on its own without asking.",
+        "The generated workbook file name matches the pattern the user confirmed, with the ticket key and card name in it."
+      ]
+    },
+    {
+      "id": 3,
+      "eval_name": "generator-workbook-shape",
+      "prompt": "Run scripts/build_workbook.py over a small cases.json and confirm the workbook opens and matches the template contract.",
+      "files": [],
+      "assertions": [
+        "Output opens with openpyxl; the sheet names and their order match references/template-format.md.",
+        "The header row's cells equal the documented headers across all twelve columns.",
+        "The first data row's running-number cell holds a formula referencing the test-type cell beside it.",
+        "The `test` defined name exists and the test-type and priority column data validations are present.",
+        "freeze_panes matches the documented cell and each case became exactly one data row with its TC ID in the TC ID column."
+      ]
+    }
+  ]
+}
