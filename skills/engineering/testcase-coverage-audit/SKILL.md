@@ -35,8 +35,8 @@ This skill finds those, and finds what is missing, and leaves the set executable
 ## What this skill is not
 
 - Writing a new set from a ticket + prototype → `spec-prototype-to-testcases`.
-- Converting a set to YAML / Playwright → `gen-test-cases-to-yaml`, `testcase-to-e2e`.
-- Running the tests → `e2e-excel-evidence`.
+- Converting a set to YAML / Playwright → `gen-test-cases-to-yaml`, `cases-to-e2e`.
+- Running the tests → `e2e-run-evidence`.
 - Comparing a design handoff to the app → `design-handoff-check`.
 
 ## Ask before you write anything (mandatory)

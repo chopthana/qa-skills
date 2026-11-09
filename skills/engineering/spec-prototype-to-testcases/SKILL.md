@@ -44,8 +44,8 @@ reviewable workbook.
 ## When not to use this
 
 - Converting an existing workbook / CSV / YAML to another format → use
-  `testcase-to-domain` (YAML) or `testcase-to-e2e` (Playwright).
-- Running tests or collecting evidence → `e2e-excel-evidence`.
+  `testcase-to-domain` (YAML) or `cases-to-e2e` (Playwright).
+- Running tests or collecting evidence → `e2e-run-evidence`.
 
 ## Ask before you generate (mandatory)
 
