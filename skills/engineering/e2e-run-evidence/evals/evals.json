@@ -1,0 +1,50 @@
+{
+  "skill_name": "e2e-run-evidence",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "folder-run-workbook-and-webm-viewer",
+      "prompt": "Run the existing E2E tests under tests/promo-code/ and collect their run results into a new worksheet in the promo-code test workbook. Embed each captured screenshot, but don't put videos in Excel; give me one standalone HTML that plays the recorded WebM files. Never modify my original workbook.",
+      "files": [],
+      "assertions": [
+        "Finds the Playwright config, the test command and the report/evidence paths from the repository instead of assuming any of them.",
+        "Runs the requested test folder without silently narrowing its scope and reports passed, skipped, failed and fixme counts from the run.",
+        "Creates a separate workbook whose results sheet headers are exactly ID, Topic, Expected result, Status, Reason, Image, with IDs in source order.",
+        "Reads the sheet name and the case-ID family off the source workbook and passes both explicitly; never relies on a built-in default.",
+        "Maps statuses from the current Playwright JSON report: a case is Passed only when the run passed with no held bullet, and every other case (failed, skipped, held or unreported) is Not pass, with no stale screenshot used as proof of a pass.",
+        "Embeds current-run screenshots in the workbook and adds no video column or WebM hyperlink to Excel.",
+        "Creates one standalone HTML file with the run's WebM bytes embedded for offline playback; it needs no companion media directory.",
+        "Verifies ZIP/XML validity, representative video playback, unchanged original workbook cells and hash, and reports shared-environment mutations and skips."
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "scoped-rerun-of-two-cases",
+      "prompt": "Can you rerun just promo-code-history.spec.ts for the cases PROMO-HISTORY-005 and PROMO-HISTORY-006, then put the results in an Excel copy of our test-result file? Include screenshots and make a single HTML file I can open offline to play the WebM videos.",
+      "files": [],
+      "assertions": [
+        "Runs only the requested spec and case grep, including the configured setup-project dependency.",
+        "Asks who the tester is before exporting and stamps that name on every case that got a result.",
+        "Exports a new workbook preserving source IDs, topics and order, leaving the source file untouched.",
+        "Marks the matching cases from current report outcomes and records every other source ID as Not pass, never as Waiting to test.",
+        "Embeds existing current-run screenshots without copying prior runs' evidence files.",
+        "Produces a single self-contained HTML viewer whose embedded WebM media plays offline in a supported browser.",
+        "Reports the executed, skipped and setup counts honestly, and notes that Playwright test counts are not workbook case counts."
+      ]
+    },
+    {
+      "id": 3,
+      "eval_name": "unfamiliar-workbook-column-mapping",
+      "prompt": "The folder e2e/tests/orders has Playwright tests and Orders-QA.xlsx with IDs in column B and names in C. Run the folder, add a results sheet, and build a standalone HTML viewer for the run videos. Keep the existing tabs and formulas exactly as-is.",
+      "files": [],
+      "assertions": [
+        "Inspects the source workbook, prints its sheet names and first rows, and maps the ID and topic columns to B and C explicitly instead of using the exporter's default layout.",
+        "Passes the sheet name and the case-ID family read from that workbook, since both are required flags.",
+        "Preserves all original sheets, cell values, formulas and the source file hash by exporting to a new workbook.",
+        "Creates the results sheet in source order with current-run statuses, reasons and screenshots.",
+        "Creates a standalone viewer embedding the run's WebM attachments, with no sidecar video folder.",
+        "Checks that the embedded WebM is playable in a browser and that Excel contains no video column."
+      ]
+    }
+  ]
+}

@@ -191,7 +191,7 @@ screenshot: <path>
 ## ส่งต่อเป็น test case
 
 ขั้นแยก ทำเมื่อผู้ใช้สั่ง: finding ที่ผู้ใช้ยืนยันแล้ว → เขียนเป็น test case ผ่าน
-pipeline ของโปรเจคนั้น (`testcase-to-domain` / `testcase-to-e2e` หรืออะไรที่โปรเจค
+pipeline ของโปรเจคนั้น (`testcase-to-domain` / `cases-to-e2e` หรืออะไรที่โปรเจค
 ใช้) **เฉพาะอันที่ repro ได้แน่นอน** อันที่ซ้ำไม่ได้ยังไม่พร้อมเป็น regression test
 
 ## ห้าม

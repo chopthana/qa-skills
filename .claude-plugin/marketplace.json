@@ -9,7 +9,7 @@
     {
       "name": "qa-skills",
       "source": "./",
-      "description": "Personal agent skills for QA: write test cases from a spec and a design prototype or a screenshot, audit a set that already exists, batch-convert a sprint's workbooks into a repo's own domain YAML, explore a UI for bugs, check a design handoff, and run a bulk test-case job across fan-out subagents.",
+      "description": "Personal agent skills for QA: write test cases from a spec and a design prototype or a screenshot, audit a set that already exists, batch-convert a sprint's workbooks into a repo's own domain YAML, explore a UI for bugs, check a design handoff, turn reviewed cases into Playwright E2E specs with watchable evidence, run a suite and report its results into an Excel workbook plus an offline video viewer, and run a bulk test-case job across fan-out subagents.",
       "category": "engineering",
       "keywords": [
         "test-cases",
@@ -20,7 +20,11 @@
         "subagents",
         "orchestration",
         "coverage",
-        "exploratory-testing"
+        "exploratory-testing",
+        "playwright",
+        "e2e",
+        "test-automation",
+        "evidence"
       ]
     }
   ]

@@ -9,7 +9,7 @@ syntax, so these work with any agent that reads Agent Skills.
 
 ## Skills
 
-Seven skills covering one QA workflow, in the order it runs.
+Nine skills covering one QA workflow, in the order it runs.
 
 **Writing cases**
 
@@ -32,6 +32,13 @@ Seven skills covering one QA workflow, in the order it runs.
 | Skill | What it does |
 | --- | --- |
 | [`gen-test-cases-to-yaml`](skills/engineering/gen-test-cases-to-yaml/SKILL.md) | Batch-converts a whole sprint folder of workbooks into a repo's own domain test-case YAML tree — translated to English, staged in one folder, reconciled row-by-row so nothing is dropped, imported in one pass. Re-runs convert only the delta. |
+
+**Automating and running**
+
+| Skill | What it does |
+| --- | --- |
+| [`cases-to-e2e`](skills/engineering/cases-to-e2e/SKILL.md) | Reviewed cases become Playwright specs in whatever E2E project the repo already has — layout, commands and locator strategy all read off the repo first. Its evidence contract is the point: a headless video with no cursor proves nothing, so every click is marked and every case ends on a close-up of the exact cell its expected result names. |
+| [`e2e-run-evidence`](skills/engineering/e2e-run-evidence/SKILL.md) | Runs the suite you asked for and turns that one run into a workbook a reviewer can read — status, reason and the input file stacked above the result frame per case — plus a single offline HTML file with the videos embedded, because Excel will not play them. A case nobody confirmed is never a pass. |
 
 ## Installation
 
@@ -188,8 +195,8 @@ A skill the whole team should have belongs in that project repo's own
 
 Python 3 throughout. The skills that read or write `.xlsx` —
 `gen-test-cases-to-yaml`, `spec-prototype-to-testcases`,
-`testcase-coverage-audit` — need `openpyxl`, and `gen-test-cases-to-yaml` also
-needs `PyYAML`:
+`testcase-coverage-audit`, `e2e-run-evidence` — need `openpyxl`, and
+`gen-test-cases-to-yaml` also needs `PyYAML`:
 
 ```bash
 pip3 install --user openpyxl pyyaml
@@ -199,14 +206,21 @@ pip3 install --user openpyxl pyyaml
 reader are stdlib only. Every `scripts/` directory is self-contained: no skill
 here calls code from another repo.
 
-Two skills need more than Python. `subagent-driven-testcases` needs an agent
+Some skills need more than Python. `subagent-driven-testcases` needs an agent
 that can dispatch subagents, plus whichever **producer** skill writes the cases
 for that run — the producer's own requirements then apply. `ui-explore` and the
 app-comparison half of `design-handoff-check` need a browser the agent can
-drive.
+drive. `cases-to-e2e` and `e2e-run-evidence` need a repo that already has a
+Playwright project (or, with your agreement, a new one), its Node toolchain,
+and the Playwright browsers installed; `e2e-run-evidence` additionally reads
+and writes `.xlsx`, and its viewer needs a browser with WebM support to watch
+the result. Neither of them reaches outside the repo: both read the project's
+config, scripts and precedent specs rather than carrying a layout of their own.
 
 **What you supply per run, because no skill here hardcodes it:** the prototype
 or handoff base URL (`spec-prototype-to-testcases` reads `PROTOTYPE_BASE_URL`
 or `--base` and ships with no default host), your team's workbook template and
-its naming convention, the repo's test-case root, and the TC ID family already
-in use. Each skill discovers or asks; see [ADR 3](.agents/adr/0003-skills-carry-no-project-specific-paths.md).
+its naming convention, the repo's test-case root, the TC ID family already in
+use (`e2e-run-evidence` takes it as a required `--tc-prefix`, with the source
+sheet name, and refuses to guess either), and the E2E project's own paths and
+commands. Each skill discovers or asks; see [ADR 3](.agents/adr/0003-skills-carry-no-project-specific-paths.md).
