@@ -55,13 +55,30 @@ between runs. Just never a temp dir that may be cleared.
 
 ```bash
 python3 <skill-dir>/scripts/scan_folder.py "<source folder>" \
-  --json "$STG/source.json" > "$STG/source.md"
+  --json "$STG/source.json" --format none
 ```
 
-`source.json` is the accounting baseline; `source.md` is the full content dump
-to convert from — read it, do not re-open the workbooks by hand. **Keep
-`source.json`** — it is also the baseline for the next re-run (step 8), so
-overwrite it only through `scan_folder.py`, never delete it.
+`source.json` is the accounting baseline. **Keep it** — it is also the baseline
+for the next re-run (step 8), so overwrite it only through `scan_folder.py`,
+never delete it.
+
+**Neither artifact is yours to read.** `--format none` suppresses the markdown
+form, which is the full content dump of every workbook in the drop; and
+`source.json` carries each extracted row as well, so it is no smaller. A sprint
+drop is the largest thing in this pipeline and it must not enter the context
+that is talking to the user — each converter in step 3 scans its own file and
+reads only that.
+
+What you read is the accounting, and you get it without the content:
+
+```bash
+python3 -c "
+import json,sys; d=json.load(open('$STG/source.json'))
+t=d['totals']; print(t['files'],'files,',t['case_rows'],'rows,',t['unreadable'],'unreadable')
+for f in d['files']:
+    print(f\"  {f['name']} | {f['ticket'] or 'no ticket'} | {f['status']} | {f.get('case_rows',0)} rows\")
+"
+```
 
 The script exits non-zero when a file is unreadable (password-protected or
 legacy-encrypted workbooks are common in these drops, e.g. `CDFV2 Encrypted`).
@@ -149,6 +166,38 @@ any YAML — a sheet edit can land off by a row. After the fix, `id` and sheet
 
 ### 3. Convert into staging
 
+**Fan out: one `tc-convert` subagent per source file** (`model: "sonnet"`,
+`effort: "medium"`). A sprint drop is a pile of independent workbooks, each
+converted the same way — there is nothing to coordinate between them, so
+nothing is gained by doing them in one context and a whole drop's content is
+lost from yours by not.
+
+Each dispatch carries **paths, never content**:
+
+| the converter gets | which is |
+| --- | --- |
+| its own source file | one path out of `source.json`'s `files` |
+| the scan command for it | `scan_folder.py "<its file>" --json "$STG/scan-<slug>.json" > "$STG/source-<slug>.md"` — it runs this itself |
+| the target tree root and its conventions | what you settled in step 2 |
+| its staging subtree | `$STG/tree/` plus the domain it writes under |
+| **its own** mapping CSV | `$STG/map-<slug>.csv` — never the shared one |
+| this SKILL.md's path | steps 3 and 4 below are its writing contract |
+
+It returns counts, the paths it wrote, its skipped rows with reasons, and its
+derived preconditions. Run 3–5 at a time. Nothing it returns contains case text.
+
+A file with an unusual shape — an odd header row, two tickets in one workbook,
+a sheet the scan called `unreadable` — is an exception, and exceptions are where
+your judgment is worth the tokens. But do not open it to find out what is wrong
+with it: send `tc-extract` (`model: "haiku"`, `effort: "low"`) to report its
+shape — sheet names, where the header row actually is, which columns map, what
+broke — and brief a converter from that. You decide; you do not read the
+workbook to decide.
+
+**Steps 3 and 4 are the converter's contract, not yours.** Read them when you
+are converting a file by hand, or when a converter's report tells you it could
+not follow one.
+
 Write files to `$STG/tree/<domain>/<feature>/<scenario>.yaml`, mirroring
 `$ROOT`'s own tree shape, so step 6 is a single move into `$ROOT`.
 
@@ -209,7 +258,10 @@ Three lines are not optional, whatever the tree's style:
 >       - "The code/name field is outlined in red"
 > ```
 
-Record each row in `$STG/mapping.csv` as you go:
+Record each row as you go — in `$STG/map-<slug>.csv` when you are a converter
+(your own file, so parallel siblings cannot interleave rows), or directly in
+`$STG/mapping.csv` when you are converting by hand with no fan-out. Step 5
+merges them. Same header either way:
 
 ```csv
 source_file,sheet,source_row,source_tc_id,new_id,target_path,note
@@ -268,7 +320,20 @@ not convert gets `new_id` = `SKIPPED` and a reason in `note`.
 
 ### 5. Reconcile, then validate
 
-Accounting first — this is the gate that makes "nothing dropped" a fact
+First merge the converters' mapping files into the one `reconcile.py` reads —
+one header, then every converter's rows:
+
+```bash
+cd "$STG" && { head -1 "$(ls map-*.csv | head -1)"; tail -q -n +2 map-*.csv; } > mapping.csv
+wc -l map-*.csv mapping.csv            # the merged row count must be the sum
+```
+
+A converter that wrote no rows, or whose file is missing, shows up here as a
+short count — chase it before reconciling, because `reconcile.py` would
+otherwise report its rows as dropped source rows and point you at the sources
+instead of at the subagent.
+
+Accounting next — this is the gate that makes "nothing dropped" a fact
 rather than a claim:
 
 ```bash
@@ -331,7 +396,7 @@ are the baseline; the goal is to re-touch only the rows that actually changed.
    ```bash
    cp "$STG/source.json" "$STG/source.prev.json"
    python3 <skill-dir>/scripts/scan_folder.py "<source folder>" \
-     --json "$STG/source.json" > "$STG/source.md"
+     --json "$STG/source.json" --format none
    ```
 
    Use the same targets and flags as the first run, so the two scans are
@@ -354,7 +419,8 @@ are the baseline; the goal is to re-touch only the rows that actually changed.
 
 3. Convert only the delta:
    - **`unchanged` file** — copy the previous `$STG/tree/<path>` over verbatim;
-     open neither `source.md` nor the workbook for it.
+     dispatch nothing and open neither its scan nor the workbook for it. This is
+     where a re-run earns its keep, so check it before converting anything.
    - **`changed` file** — carry the `unchanged` cases over untouched and
      re-translate only the `added` / `changed` rows, folding them back into the
      same target file.
@@ -366,6 +432,13 @@ are the baseline; the goal is to re-touch only the rows that actually changed.
    `source_row` for moved/changed ones, set `new_id` = `SKIPPED` (with a reason)
    for removed source rows. Unchanged rows need no edit — `reconcile.py`
    resolves them by `TC ID`, so a shifted row number does not invalidate them.
+
+   **A re-run edits `mapping.csv`, it does not rebuild it** — the previous run's
+   rows are the baseline. So do not re-run step 5's merge here, which would
+   replace the baseline with only this run's slices. A converter you dispatch
+   for a `changed` or `added` file still writes its own `map-<slug>.csv`; you
+   fold those rows in by hand, then delete the slice file so the next full run's
+   merge cannot pick up a stale one.
 
 4. Re-run the same two gates (step 5) on the merged state, then import **only
    what changed** — copy the changed/added target files and delete the removed

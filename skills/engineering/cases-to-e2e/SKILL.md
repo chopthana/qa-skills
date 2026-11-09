@@ -1,20 +1,13 @@
 ---
 name: cases-to-e2e
 description: >
-  Turn QA test cases — a "Test Result" workbook, CSV/Markdown, or a repo's own
-  domain test-case YAML — into runnable Playwright specs inside the project's
-  existing E2E project, run them against the environment the project points at,
-  and hand back reviewable evidence (watchable video with marked clicks,
-  key-moment and close-up screenshots in the HTML report, optionally pass/fail
-  written back into the source workbook). Project-agnostic: it hardcodes no
-  paths, commands or environments, and discovers the target project's E2E
-  layout, package manager, locator strategy and precedent specs at run time —
-  so if a repo ships its own E2E skill with the project's facts baked in, that
-  one wins and this one is the portable fallback. Use this whenever the user
-  hands over a test-case or Test Result file in any format, asks to automate
-  test cases or add E2E coverage, asks to run or re-run a case, points at a
-  test-case YAML, or wants screenshot/video evidence per case — even when they
-  just paste the cases into chat without naming a skill or format.
+  Turn QA test cases — a Test Result workbook, CSV/Markdown, or a repo's own
+  domain test-case YAML — into runnable Playwright specs in the project's
+  existing E2E suite, run them, and hand back reviewable evidence (watchable
+  video with marked clicks, close-up screenshots, optional pass/fail
+  write-back). Use whenever someone hands over test cases in any format, asks
+  to automate them or add E2E coverage, asks to run or re-run a case, or wants
+  per-case screenshot/video evidence. A repo's own E2E skill wins over this one.
 disable-model-invocation: true
 ---
 
@@ -275,30 +268,12 @@ before asserting: if not, `test.skip` with the exact reconfiguration needed —
 ID is what maps a run back onto the case and a failure onto a written
 expectation.
 
-**Open every spec with the case carried as the header doc comment**, in this
-shape. The case file supplies the business content; you fill in Route and the
-labelled Steps from your derivation. The spec gets read far more often than the
-case file, and the header is where QA confirms your derivation:
-
-```markdown
-## <CASE-ID>: <short title>
-
-- **Route:** /<app path> (<page state, e.g. result page, empty state>)
-- **Precondition:** <data/setup that must exist before the case runs>
-- **Inputs:** <files or values this case uploads/enters, or "none"; for a file, the sheet, row and column each Expected value is read from>
-- **Steps:**
-  1. <action, using the exact visible label>
-  2. <action>
-- **Expected:**
-  - <observable result, written as the shipped UI actually presents it → each bullet becomes one assertion; note any wording translated from the case file>
-- **Evidence:** <optional; default is video + key-moment + final screenshots, plus `<CASE-ID>-excel` when an Expected value comes from an input file>
-- **Out of scope:** <optional, things this case deliberately does not verify>
-```
-
-In the TS file it becomes a leading `/** … */` block; keep the labels in the
-Steps verbatim, since a reader maps them against the locators below. A grouped
-spec carries one block per covered case (or one merged block listing every case
-ID) plus its adaptations.
+**Open every spec with the case carried as the header doc comment**,
+in the shape given in
+[references/spec-and-evidence.md](references/spec-and-evidence.md) — the
+case file supplies the business content; you fill in Route and the labelled
+Steps from your derivation. A grouped spec carries one block per covered
+case plus its adaptations.
 
 **Assert the card, not the app — but through the fixme gate.** The ticket and
 its design are the authority on _behaviour_; the shipped UI is the authority on
@@ -311,172 +286,46 @@ in the report. **Never change application code to make a test pass.** Where the
 card is silent, shipped behaviour becomes the reference and you say so
 explicitly.
 
-### Flow mechanics that have already bitten — respect them
+**Before you debug a failure, check it against
+[references/flow-mechanics.md](references/flow-mechanics.md)** — slow processing
+flows, silent no-ops, duplicate accessibility nodes, persisted reruns,
+conditional dialogs, missing assets, an unreachable base URL. Each entry there
+cost somebody a session already.
 
-- **Processing flows are slow.** Playwright's default timeout is 30–60s.
-  Upload → process → result flows need an explicit `test.setTimeout(...)` and
-  long waits on the result navigation — reached by URL, not by a heading whose
-  accessible name swallows adjacent icons.
-- **Wait on signals, not clocks.** `page.waitForResponse()`, `waitForURL`, a
-  wait-for-API helper. The only sanctioned sleeps serve the human watching the
-  video: the holds inside the marked-click and capture helpers (§4). Never
-  sleep as a substitute for a signal.
-- **The app can silently no-op.** Handlers that return early when nothing
-  changed (a save that presents no confirm modal when no field was touched)
-  will hang a fixture that unconditionally waits for the confirmation. The
-  fixture branches on "did anything actually change".
-- **Default sorts bury old rows pages deep.** A record from months ago is
-  unreachable by paging a hundred-row history — navigate with the route's own
-  query params instead.
+### Hand the spec writing to a subagent
 
-  > **Worked example** — one history screen validates `?mode=month&period=YYYY-MM`
-  > in its route schema, so the spec jumps straight to the month it needs.
-- **Design systems can render duplicate accessibility nodes** (a disabled
-  shadow checkbox beside the real one) — strict mode then double-matches. Scope
-  by element + role or `.first()`, and confirm against the page snapshot from
-  an actual failure (Playwright's `error-context.md`) rather than theorizing.
-- **Reruns persist.** Upload and process write real records on a shared
-  environment; sequence numbers advance every rerun. Assert by shape (a regex),
-  never a hardcoded sequence. For filenames carrying a timestamp, validate
-  against the click window in the app's own timezone, with about a minute of
-  tolerance.
-- **Warning dialogs are conditional.** A rerun hits a "this file was already
-  uploaded" dialog where a first run does not. Handle both with a `.or()` race
-  and then branch on `isVisible()`.
-- **Missing assets skip, not fail.** `test.skip(!fs.existsSync(...))` at the
-  **top of the test**, not inside a step — a mid-test skip abandons a run that
-  has already captured evidence. A green run may legitimately contain skips;
-  say so in your report.
-- **Reach preconditions without writing to the shared environment.** "A
-  processed run exists" does not mean "run upload and process first" — find an
-  existing one through the read-only history or report page, and `test.skip`
-  with a named reason when the environment has none.
-- **A `webServer` timeout is not a spec failure.** When Playwright times out
-  booting, the configured base URL was unreachable (network/VPN down,
-  environment asleep). Probe reachability before rerunning, and print only the
-  status — never echo the URL or any credential.
-- **A local-only suite needs the local URL explicitly.** The default env file
-  may point the base URL at the shared environment, in which case a spec gated
-  on localhost skips silently while an ungated sibling writes its run to the
-  shared one. Override per run, not in the file — dotenv never overrides an
-  already-set variable, so a one-off `BASE_URL=... <test command>` is enough.
-- **A generic server error is environment until proven otherwise.** An
-  unspecific "something went wrong" page hides its cause, and an identical
-  rerun fails identically. Read the service's own logs before rerunning.
+Writing a spec means reading the references above, the project's precedent
+specs, its page objects and its fixtures — and then a run's worth of failure
+output. That is a lot of context for work whose product is one file, so **it
+does not belong in the context that is talking to the user.**
 
-  > **Worked example** — one stack runs its data warehouse as a Docker
-  > emulator, so the team reads
-  > `docker logs "$WAREHOUSE_CONTAINER" --since 10m | grep ERROR` and has seen
-  > two causes there: a "table not found" on an empty project id (one env var
-  > unset) seconds after upload, and a 20-second dial timeout to an internal
-  > service (off the network). Find your stack's equivalent log; the container
-  > name is yours to supply, never a default.
+Dispatch **one subagent per case group** (`model: "sonnet"`,
+`effort: "medium"`). If the target repo ships its own spec-writing agent, use
+that one — it already carries the project's facts. Otherwise use `tc-author`.
 
-## 4. Evidence contract (every spec, no exceptions)
+Each dispatch carries, as **paths, never pasted content**: the case file, this
+skill's `references/spec-and-evidence.md` and `references/flow-mechanics.md`,
+the §0 discovery notes, the precedent spec to imitate, and the output spec path.
+It returns the spec path, its run result line, and what it had to park.
 
-```ts
-test.use({ video: "on" }); // spec-scoped; survives a global-config change
-```
+Keep for yourself: §0 discovery, §1 intake, §2 mapping, the fixme rulings, and
+§7's report. Those are judgment and they are the conversation.
+
+## 4. Evidence contract
 
 **Assertions are for the machine; the evidence is for a human who wasn't
-watching the run.** Headless video renders no pointer, so a fast, cursor-less
-video verifies nothing: a reviewer cannot tell where a click landed, or see a
-result the test blows past in three seconds. Make every run watchable.
+watching the run.** Headless video renders no pointer, so a fast,
+cursor-less video verifies nothing. Every spec carries
+`test.use({ video: "on" })`, every click goes through the marked-click
+helper, every case ends with a spotlight check on the exact element its
+Expected names, and every capture is named by case ID.
 
-The contract needs four helpers in the project's shared utils fixture. Reuse
-the project's equivalents if they exist; otherwise add them, with these names
-or the project's own naming:
-
-| Helper | What it must do |
-| --- | --- |
-| `spotlightClick(locator)` | outline the element, hold ~600ms before and after the click, leave the outline on so every click stays marked and the interaction is retraceable |
-| `captureEvidence(name)` | rest the state ~1.5s, screenshot to a **stable directory outside Playwright's `outputDir`**, and attach the PNG to the report |
-| `spotlightCheck(locator(s), '<CASE-ID>')` | scroll the target into view, outline it in a second colour, hold, then capture a close-up (`<CASE-ID>-close-up.png`) followed by the viewport frame with the outline still on (`<CASE-ID>.png`) |
-| `showWorkbook(file, '<CASE-ID>-excel', { where, columns, note })` | render an input spreadsheet in the test's page the way a spreadsheet app shows it, highlight the rows and cells the case reads, outline them, and capture close-up then frame |
-
-Then, per case:
-
-- **Click through the marked-click helper**, routed through a page-object
-  action (`openExportModal()`, `setPermissions()`…) so specs read as steps and
-  the holds live in one place. Review-critical flows (permission setup,
-  destructive confirms) get this even when a plain click would do.
-- **Capture key moments as named evidence**, not just the end state: any state
-  a reviewer cannot re-derive from the app later (a permission matrix
-  mid-suite, a form half-filled, the row you picked) gets its own capture.
-  Because every test ends on a capture, the end-state hold comes for free.
-- **Show the point every case is about — scroll to it, mark it, zoom on it.**
-  `expect()` leaves no trace: a value checked in a row forty rows down is
-  invisible in the video and below the fold of a full-page shot, so the
-  reviewer sees a page and has to take the pass on faith. Each case therefore
-  ends with a spotlight check on the exact element(s) its Expected names: the
-  cell, the one row, the seven column headers, the two rows an absent record
-  would sit between. A locator resolving to many elements outlines them all;
-  several locators go in as an array. A case that reads two screens gets one
-  spotlight per screen, suffixed (`<CASE-ID>-page-2`).
-
-  **Check whether `fullPage` even works in this app** before relying on it: in
-  a shell whose main pane scrolls inside itself, `fullPage` yields one viewport
-  frame of wherever the pane happens to be scrolled — which is what "the
-  screenshots don't scroll" means when QA says it.
-- **The value must be whole in the frame.** Wide tables scroll horizontally at
-  a 1280px viewport and clip their right-hand columns; `999,999.99` shot as
-  `999,999.9` reads to QA as a missing decimal — a false format defect. Give
-  the spotlight helper a zoom-to-fit option and pass it whenever the point is a
-  list or a right-hand column: it should zoom out the way Ctrl − does, for
-  vertical *and* horizontal overflow, with an unchanged frame size and a floor
-  around 40%. **Never enlarge the viewport**, because testers' screens differ.
-  Outline every element the case asserts, not the first one — a `.nth(6)` cell
-  is one cell of the first row, so give the page object a column locator
-  instead.
-- **Show the file when an Expected value comes from it.** A reviewer holding
-  the evidence does not hold the upload, so a result value the file decides —
-  an amount it sets, a name it carries, a row it lists or zeroes — cannot be
-  checked from the result frame alone. Draw the file before the app is opened:
-  `where` picks rows by header text, `columns` names the cells the value comes
-  from, `note` says in one line what they decide. Decide **per Expected
-  bullet**, not per case: a value some other system or the engine decides (a
-  reason code, a failing row's `0.00`, a computed count) gets no file, because
-  showing one claims a link that is not there. The test that uploads shows the
-  whole file first (no `where`), so the video holds the input before the app
-  reads it. Capture the file **before** the result, so the result frame stays
-  the case's last match. Make the helper throw when `where` matches no row or
-  names a missing column, so the evidence never shows a file with nothing
-  marked.
-
-  An input that is not a spreadsheet (CSV, TXT, JSON, a raw body) is attached
-  as itself, named by case: `testInfo.attach('<CASE-ID>-csv', { path })` or
-  `testInfo.attach('<CASE-ID>-input', { body, contentType: 'text/plain' })`.
-  `e2e-run-evidence` draws it and stacks it above the result. A plain
-  attachment marks no cell, so when the case reads particular rows of such a
-  file, name them on the header's **Inputs** line.
-- **An absence case shows its reference too.** "X is not shown" proves nothing
-  alone, because the reviewer cannot tell X was ever in the input. Show the
-  precondition first, where it can still be seen: the file itself for what the
-  file holds, or the upload's preview for what the app read from it — upload
-  the same file, stop before the confirm step so nothing is written, and
-  spotlight X's row as `<CASE-ID>-reference`. Then mark the neighbours X would
-  sit between on the result. Cite the source rows in the report too.
-- **Read the PNGs before reporting.** Open each case's frame and close-up and
-  check that the asserted value is in frame, whole and outlined. A green test
-  whose evidence doesn't show its point is a test defect to fix, not a pass to
-  hand over. Sampling is not enough: one green run shipped frames whose row sat
-  under the sticky header. Sweep every capture for the outline colour and open
-  each one the sweep flags.
-- **Name captures by case ID, nothing else.** A workbook exporter finds a
-  case's image by that ID in the attachment name and keeps the **last** match,
-  which is why the spotlight helper attaches the close-up first and the frame
-  last. A descriptive name is fine only for a key moment belonging to no single
-  case (`setup`).
-- **Downloads**: assert on `suggestedFilename()` and contents; for a
-  spreadsheet, read it with the project's own reader (date cells arrive as
-  serial numbers, not dates).
-
-Named screenshots stay under a stable evidence directory, outside Playwright's
-cleaned `outputDir`, and are also attached to the HTML report; per-test WebM
-files stay under the run's results directory. When results are wanted in Excel,
-use `e2e-run-evidence`: its workbook carries ID, topic, expected result,
-status, reason and image, and its standalone HTML companion embeds the videos.
-Don't add unreliable WebM hyperlinks to Excel.
+The four required helpers, what each must do, and the per-case rules —
+including zoom-to-fit for clipped values, showing an input file when an
+Expected value comes from it, absence cases, and reading the PNGs before
+reporting — are in
+[references/spec-and-evidence.md](references/spec-and-evidence.md).
+**Read it before writing the first spec of a feature.**
 
 ## 5. Plumb inputs and env without leaking them
 
@@ -497,6 +346,15 @@ account, still finish the code and say exactly which name is missing.
 
 ## 6. Verify, then run
 
+A run prints thousands of lines and the verdict is a handful of numbers, so
+**dispatch the run itself** (`tc-e2e-run`, `model: "haiku"`, `effort: "low"`)
+with the project directory, the exact command, the artifact directory and a
+summary path. It returns counts, the failing test IDs with their first error
+line, and the skip reasons — never the reporter output. You read the summary
+file only for the failures you are actually going to act on.
+
+Type-check and lint stay with you: they are fast and their output is short.
+
 Use the project's own scripts, discovered in §0 — not the ones below, which are
 one repo's names:
 
@@ -515,31 +373,9 @@ its existing data is the fixture unless the user says otherwise.
 
 ### Windows PowerShell
 
-Windows PowerShell 5.1 has no `&&`, and `VAR=value cmd` does not parse. The
-same commands in its own syntax:
-
-```powershell
-<pkg> -C <e2e-dir> check:types; if ($?) { <pkg> -C <e2e-dir> lint }
-
-try {
-  $env:BASE_URL = 'http://localhost:3000'
-  <pkg> -C <e2e-dir> exec playwright test <spec> --project=<project>
-} finally { Remove-Item Env:BASE_URL -ErrorAction SilentlyContinue }
-```
-
-- **Scope every override with `try { } finally { }`.** `$env:` lasts for the
-  whole session, and dotenv never overrides an already-set variable. A leftover
-  base URL sends every later run — shared-environment runs included — to
-  localhost. `finally` clears it on Ctrl+C too.
-- **POSIX `make` recipes need Git Bash**, called by its full path: a bare
-  `bash` resolves to WSL's, a different filesystem and network. Check
-  `make --version` when a recipe needs GNU-only syntax.
-- **A relative `-C <dir>` resolves against the current directory**, so running
-  it from inside that directory looks for `<dir>/<dir>`.
-- **If Playwright reports `EPERM … playwright-transform-cache` and then
-  `No tests found`**, the transform cache directory is not writable: point
-  `PWTEST_CACHE_DIR` at an ignored folder for the run, inside the same
-  `try { } finally { }`.
+PowerShell 5.1 has no `&&` and cannot parse `VAR=value cmd`. The same
+commands in its own syntax, plus the `try { } finally { }` scoping an
+override needs, are in [references/windows.md](references/windows.md).
 
 ### When the stack, not the spec, is broken
 
@@ -611,6 +447,16 @@ the standard above, and say so in your report.
 
 ## References
 
+Hand these to the spec-writing subagent as paths. Read one yourself only when
+you are the one writing.
+
+- `references/spec-and-evidence.md` — the spec header's shape and the full
+  evidence contract (the four helpers, zoom-to-fit, showing an input file,
+  absence cases, reading the PNGs). **Required before the first spec.**
+- `references/flow-mechanics.md` — the failure modes that have already cost
+  somebody a session. Read before debugging a failure.
+- `references/windows.md` — PowerShell syntax and override scoping. Windows
+  only.
 - `references/scaffold-e2e.md` — starting a Playwright project from nothing,
   for a repo that has no E2E yet (only with the user's agreement).
 - `references/fixtures-and-writeback.md` — generating fixture workbooks,
