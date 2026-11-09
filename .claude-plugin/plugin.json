@@ -1,7 +1,7 @@
 {
   "name": "qa-skills",
-  "version": "2.1.0",
-  "description": "Personal agent skills: batch-convert QA test-case workbooks into a repo's own domain test-case YAML, reconciled row-by-row so nothing is dropped.",
+  "version": "2.2.0",
+  "description": "Personal agent skills for QA test cases: batch-convert workbooks into a repo's own domain YAML reconciled row-by-row, and run a bulk test-case job as a controller plus fan-out subagents.",
   "author": {
     "name": "Thanakorn Chanprasit",
     "url": "https://github.com/chopthana"
@@ -13,9 +13,12 @@
     "qa",
     "excel",
     "yaml",
-    "batch-conversion"
+    "batch-conversion",
+    "subagents",
+    "orchestration"
   ],
   "skills": [
-    "./skills/engineering/gen-test-cases-to-yaml"
+    "./skills/engineering/gen-test-cases-to-yaml",
+    "./skills/engineering/subagent-driven-testcases"
   ]
 }

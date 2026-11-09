@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# One run, one directory. Prints paths; never prints case content.
+#
+#   tc-workspace <run-slug>              create/print the run directory
+#   tc-workspace <run-slug> --brief 3    print .../slice-3-brief.md
+#   tc-workspace <run-slug> --cases 3    print .../slice-3-cases.json
+#   tc-workspace <run-slug> --report 3   print .../slice-3-report.md
+#   tc-workspace <run-slug> --review 3   print .../slice-3-review.md
+#   tc-workspace <run-slug> --file x.md  print .../x.md
+#   tc-workspace <run-slug> --list       list what the run already has
+#
+# Root, in order: --root <dir>, $TESTCASE_SDD_ROOT, the git repo root, $HOME.
+# Inside a repo the directory is added to .git/info/exclude, so a run's
+# scratch never reaches a commit and `git clean -fdx` will destroy it.
+set -euo pipefail
+
+die() { printf '%s\n' "$*" >&2; exit 1; }
+
+[ $# -ge 1 ] || die "usage: tc-workspace <run-slug> [--brief|--cases|--report|--review N | --file NAME | --list]"
+
+slug=$1; shift
+case $slug in
+  -*) die "first argument must be the run slug, not an option" ;;
+esac
+# A slug names a directory: keep it boring.
+printf '%s' "$slug" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$' \
+  || die "run slug must be 1-64 chars of [A-Za-z0-9._-] and start alphanumeric: got '$slug'"
+
+root=""
+if [ "${1-}" = "--root" ]; then
+  [ $# -ge 2 ] || die "--root needs a directory"
+  root=$2; shift 2
+elif [ -n "${TESTCASE_SDD_ROOT-}" ]; then
+  root=$TESTCASE_SDD_ROOT
+elif git rev-parse --show-toplevel >/dev/null 2>&1; then
+  root=$(git rev-parse --show-toplevel)
+else
+  root=$HOME
+fi
+[ -d "$root" ] || die "root is not a directory: $root"
+
+base="$root/.testcase-sdd"
+ws="$base/$slug"
+mkdir -p "$ws"
+
+# Keep the scratch out of the repo's history without touching its .gitignore.
+if git -C "$root" rev-parse --git-dir >/dev/null 2>&1; then
+  gitdir=$(git -C "$root" rev-parse --absolute-git-dir 2>/dev/null || true)
+  if [ -n "$gitdir" ] && [ -d "$gitdir" ]; then
+    mkdir -p "$gitdir/info"
+    if ! grep -qxF '.testcase-sdd/' "$gitdir/info/exclude" 2>/dev/null; then
+      printf '.testcase-sdd/\n' >>"$gitdir/info/exclude"
+    fi
+  fi
+fi
+
+if [ $# -eq 0 ]; then
+  printf '%s\n' "$ws"
+  exit 0
+fi
+
+case $1 in
+  --list)
+    printf '%s\n' "$ws"
+    ls -1 "$ws" 2>/dev/null || true
+    ;;
+  --brief|--cases|--report|--review)
+    [ $# -ge 2 ] || die "$1 needs a slice number"
+    printf '%s' "$2" | grep -Eq '^[0-9]{1,3}$' || die "slice number must be 1-3 digits: got '$2'"
+    case $1 in
+      --brief)  printf '%s\n' "$ws/slice-$2-brief.md" ;;
+      --cases)  printf '%s\n' "$ws/slice-$2-cases.json" ;;
+      --report) printf '%s\n' "$ws/slice-$2-report.md" ;;
+      --review) printf '%s\n' "$ws/slice-$2-review.md" ;;
+    esac
+    ;;
+  --file)
+    [ $# -ge 2 ] || die "--file needs a name"
+    case $2 in
+      */*|..|.) die "--file takes a bare file name, not a path: got '$2'" ;;
+    esac
+    printf '%s\n' "$ws/$2"
+    ;;
+  *) die "unknown option: $1" ;;
+esac
