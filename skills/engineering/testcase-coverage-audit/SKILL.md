@@ -1,18 +1,14 @@
 ---
 name: testcase-coverage-audit
 description: >
-  Audit a test-case workbook that already exists. Finds the cases that cannot
-  be executed as written — an expected result that contradicts itself, two
-  data values crammed into one case, an assertion the steps never reach, a
-  control that is disabled at the moment the case checks its error — and the
-  cases that are missing because nobody traced the screen's real reachable
-  states. Splits what has to be split, dedupes what repeats, and lists the
-  coverage gaps against the three sources that disagree (ticket, published
-  prototype, shipped code). Use whenever someone hands over an existing
-  `.xlsx` / CSV / Markdown test-case set and asks "เคสครบไหม", "เช็คเคสที่
-  เกิดขึ้นได้", "แยกเคสที่ expected ขัดกันเอง", "coverage พอหรือยัง", "มีเคส
-  ซ้ำไหม", or calls /testcase-coverage-audit. Not for writing a new set from
-  scratch — that is `spec-prototype-to-testcases`.
+  Audit a test-case set that already exists: find the cases that cannot be run
+  as written (an expected result that contradicts itself, two data values in
+  one case, an assertion the steps never reach) and the coverage gaps against
+  the ticket, the prototype and the shipped code. Use for an existing `.xlsx` /
+  CSV / Markdown set and "เคสครบไหม", "เช็คเคสที่เกิดขึ้นได้", "แยกเคสที่
+  expected ขัดกันเอง", "coverage พอหรือยัง", "มีเคสซ้ำไหม", or
+  /testcase-coverage-audit. Not for writing a new set — that is
+  `spec-prototype-to-testcases`.
 disable-model-invocation: true
 ---
 
@@ -105,6 +101,20 @@ is not row 1 — the layout `spec-prototype-to-testcases` documents), or a CSV
 or Markdown table, and prints every case as `id | topic | steps | expected |
 note`, then runs the mechanical checks below and prints the candidates.
 
+**Run it twice: `--quiet` for yourself, full output to a file for the
+reviewers.** The full dump of a 120-case workbook is the largest thing in this
+audit and you need none of it — only the flags, and later the specific cases a
+reviewer points at.
+
+```bash
+python3 <skill-dir>/scripts/audit_testcases.py --input "<workbook>.xlsx" --quiet
+python3 <skill-dir>/scripts/audit_testcases.py --input "<workbook>.xlsx" \
+  > "$WORK/cases.txt"
+```
+
+`--quiet` gives you the counts, the flagged IDs with their check names, and the
+per-check tally. `$WORK/cases.txt` is what §3's reviewers read, off disk.
+
 ### 2. Run the mechanical pass
 
 The script flags candidates by pattern. It is a **first pass, not the audit** —
@@ -126,7 +136,23 @@ becomes a finding, and the checks it cannot do you do yourself (§3).
 
 ### 3. Read for what a machine cannot see
 
-The script cannot read Thai and cannot execute the screen. These are yours:
+The script cannot read Thai and cannot execute the screen. Someone has to read
+every case — but reading cases is bounded, mechanical attention, not judgment,
+so **fan it out**.
+
+Dispatch `tc-review` in **chunk-audit** mode, one per ~40 cases
+(`model: "sonnet"`, `effort: "high"`). Each gets: `$WORK/cases.txt`, its case-ID
+range, the sources the set should agree with, and its own findings path
+(`$WORK/findings-<range>.md`). Each returns counts and the flagged IDs — the
+findings stay in its file.
+
+Reviewers work within their chunk. **Cross-case contradictions between chunks
+are yours**, and so is everything in §4 and §5: a reviewer that only saw cases
+001–040 cannot know that 078 disagrees with 012. Collect the per-chunk findings,
+then read the flagged cases yourself — by ID, out of `cases.txt` — and rule on
+them.
+
+The things to look for, in a chunk or by hand:
 
 - **Internal contradiction in one assertion.** "ช่องรับเฉพาะตัวเลข" and
   "บันทึกไม่ได้เมื่อมีตัวอักษร พร้อมข้อความใต้ช่อง" cannot both be true: if the

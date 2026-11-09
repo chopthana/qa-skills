@@ -171,11 +171,38 @@ Remove it and install again with the new name.
 .claude-plugin/
 ├── marketplace.json   catalog: marketplace `chopthana`, plugin source "./"
 └── plugin.json        plugin `qa-skills`: version and the skills it ships
+agents/                the seats the skills dispatch to — auto-discovered, not
+                       listed in plugin.json; each pins its own model
 skills/<category>/<skill-name>/
 ├── SKILL.md           frontmatter (name + description) and the workflow
 ├── references/        reference the SKILL.md points at, loaded on demand
 └── scripts/           helpers the SKILL.md calls
 ```
+
+### The agents, and why
+
+A skill cannot choose its model — `SKILL.md` frontmatter takes `name`,
+`description`, `allowed-tools` and `disable-model-invocation`, and a `model:`
+key there is ignored. An agent *can*, so the work that does not need the
+expensive model lives in one:
+
+| Agent | Model | Its job |
+| --- | --- | --- |
+| `tc-extract` | haiku | read a bulky or odd-shaped source, write it normalized, report counts and anomalies only |
+| `tc-convert` | sonnet | one source file → the target format, translating; its own mapping rows |
+| `tc-author` | sonnet | the cases or specs for one briefed slice |
+| `tc-review` | sonnet | one slice's review, or one chunk of an existing set |
+| `tc-e2e-run` | haiku | run a suite, parse the reporter output, report counts and failing IDs — never a diagnosis |
+
+The rule the skills follow: **if a step's input is bigger than its output, it
+belongs in a subagent.** Extraction, translation, writing from a complete brief
+and running a suite all qualify. What stays with the controller is the survey,
+the rulings, the final review and the conversation — the judgment, which is
+also the only part the user sees.
+
+This does not lower the total tokens billed. It keeps the controller's context
+from growing (the thing that forces a compaction halfway through a sprint drop)
+and moves the bulk off the most expensive model.
 
 Adding a skill: drop it under `skills/<category>/`, add its path to
 `plugin.json`'s `skills` array, bump `version` (managed installs only reinstall

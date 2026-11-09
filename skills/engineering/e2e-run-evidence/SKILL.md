@@ -4,16 +4,11 @@ description: >
   Run an existing Playwright E2E suite or a scoped test folder, collect that
   run's pass/skip/fail results and screenshots into a separate Excel workbook,
   and build one standalone HTML file that embeds the recorded WebM videos for
-  browser playback. Project-agnostic: it hardcodes no suite path, command,
-  sheet name or case-ID family, and discovers the project's E2E layout, test
-  command, evidence directory and workbook columns at run time — so if a repo
-  ships its own evidence skill with those facts baked in, that one wins and
-  this one is the portable fallback. Use whenever a user asks to run E2E tests
-  and deliver results or evidence in Excel, requests screenshots in a test
-  workbook, wants runnable video evidence alongside a workbook, or asks to
-  rerun a test folder and gather its output. Do not use to author new test
-  cases or to convert source QA cases into Playwright specs; use `cases-to-e2e`
-  for that.
+  browser playback. Use whenever someone asks to run E2E tests and deliver
+  results or evidence in Excel, wants screenshots or runnable video alongside a
+  workbook, or asks to rerun a test folder and gather its output. Not for
+  authoring cases or writing specs — that is `cases-to-e2e`. A repo's own
+  evidence skill wins over this one.
 disable-model-invocation: true
 ---
 
@@ -75,9 +70,26 @@ workbook's hash before export, and never write over the source.
 
 ### 4. Run the exact requested suite
 
+**Dispatch the run** to `tc-e2e-run` (`model: "haiku"`, `effort: "low"`) with
+the project directory, the exact command, the artifact directory and a summary
+path. A suite prints thousands of lines and what you need from it is a handful
+of counts, the failing IDs and the skip reasons — so the reporter output has no
+business in the context that is talking to the user, and the JSON report the
+exporter reads in step 5 is a file either way.
+
+What comes back is counts, failing test IDs with their first error line, skip
+reasons, and anything that made the run unclean. You read the summary file only
+for the failures you are going to act on.
+
+Two things stay with you, because they are judgment and not transcription:
+**whether a failure is the app, the test or the environment** (`tc-e2e-run`
+reports the error line and deliberately offers no diagnosis), and **whether to
+rerun at all**.
+
 Include the configured setup-project dependency. **Do not silently narrow the
-scope after failures or timeouts.** Report the actual passed / skipped / failed
-counts from the run.
+scope after failures or timeouts**, and do not let a dispatch do it either —
+give it the command verbatim. Report the actual passed / skipped / failed counts
+from the run.
 
 ### 5. Ask who the tester is, then export
 

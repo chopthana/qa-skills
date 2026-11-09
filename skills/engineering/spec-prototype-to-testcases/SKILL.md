@@ -2,16 +2,13 @@
 name: spec-prototype-to-testcases
 description: >
   Turn a Jira / PRD feature spec plus its published design prototype into a QA
-  test-case workbook in your team's own `.xlsx` template (a two-sheet layout:
-  a lookup sheet plus a results sheet). Reads the spec for rules and acceptance
-  criteria and decompiles the deployed prototype bundle for the real screen
-  behavior, then writes the workbook (workbook only by default; a JSON case
-  source and a spec-vs-prototype gap report are optional and asked for first).
-  Validates wording and scans the prototype's own strings for typos. Use
-  whenever someone hands over a ticket and a prototype link (…/#<slug>) and
-  asks for test cases, test scenarios, a QA sheet, or coverage "ตาม spec" —
-  even if they never name the format. Standalone: it does not reuse a
-  case-conversion or cases-to-E2E skill.
+  test-case workbook in your team's own `.xlsx` template. Reads the spec for
+  rules and acceptance criteria, decompiles the deployed prototype bundle for
+  the real screen behavior, validates wording and scans the prototype's strings
+  for typos. Use whenever someone hands over a ticket and a prototype link
+  (…/#<slug>) and asks for test cases, test scenarios, a QA sheet, or coverage
+  "ตาม spec" — even if they never name the format. A big feature hands the
+  case-writing to `subagent-driven-testcases`, with this skill as its producer.
 disable-model-invocation: true
 ---
 
@@ -108,6 +105,20 @@ in their message, still confirm the others.
   lists, the option-filtering logic, validation banners/messages, and which
   flows exist (create vs edit).
 
+  **A beautified chunk is tens of thousands of lines of machine-generated
+  JavaScript and it is the biggest thing in this skill.** Never open it whole.
+  Go at it with `grep -n` for what you actually need — the label, the message,
+  the option array, the `required`/`maxLength`/`disabled` near a field name —
+  and read the twenty lines around each hit:
+
+  ```bash
+  grep -n -E '"[^"]*(ต้อง|ไม่|สำเร็จ|ผิดพลาด)[^"]*"' /tmp/proto/<slug>.pretty.js | head -40
+  grep -n -E 'maxLength|required|disabled|defaultValue|options:' /tmp/proto/<slug>.pretty.js | head -40
+  ```
+
+  The `--strings` dump below is the cheaper path to every label, so reach for
+  the chunk only for **behavior** the strings cannot tell you.
+
   Add `--strings` to also dump every UI string in that chunk and scan it for
   typo candidates — see § 3.
 
@@ -177,7 +188,19 @@ questions.
 
 ### 4. Expand into cases
 
-Generate cases from **the spec first**. Coverage sources, in order:
+**Above about 20 cases, hand this step to `subagent-driven-testcases`.** That
+skill is the fan-out controller for exactly this shape of work — it surveys the
+sources into one inventory, cuts disjoint slices, dispatches an author per slice
+and merges with one seat owning the IDs. It drives **this** skill as its
+producer, so the case format and the rules below still govern; what changes is
+who holds them in context.
+
+Hand it: the traceability matrix from §2, the strings and suspect files from §3,
+the intake answers you already collected, and this SKILL.md as the producer. It
+needs them because an author never goes looking for a value itself.
+
+Below that threshold, slicing costs more than it saves — write the cases here.
+Either way the coverage sources are the same, in this order:
 
 1. **Every AC** → at least one case each.
 2. **Every field rule** → required-empty, format, duplicate-in-scope,

@@ -59,12 +59,12 @@ Read [references/e2e-runs.md](references/e2e-runs.md) before setting one up.
 
 ## The seats
 
-| Seat | Context | Writes | Talks to the user |
-| --- | --- | --- | --- |
-| **Controller** (you) | the whole run | ledger, inventory, briefs, merge, report | yes — and only you |
-| **Author** | one slice | `slice-N-cases.json`, `slice-N-report.md` | **no** |
-| **Reviewer** | one slice's diff of a file | `slice-N-review.md` | **no** |
-| **Final reviewer** | the merged set | `final-review.md` | **no** |
+| Seat | Agent | Context | Writes | Talks to the user |
+| --- | --- | --- | --- | --- |
+| **Controller** (you) | — | the whole run | ledger, inventory, briefs, merge, report | yes — and only you |
+| **Author** | `tc-author` | one slice | `slice-N-cases.json`, `slice-N-report.md` | **no** |
+| **Reviewer** | `tc-review` | one slice's diff of a file | `slice-N-review.md` | **no** |
+| **Final reviewer** | — (your model) | the merged set | `final-review.md` | **no** |
 
 An author has no user. A producer skill that normally stops to ask about file
 names, ID prefixes or side files **must not stop** inside an author — so you
@@ -219,12 +219,27 @@ Template: [author-prompt.md](author-prompt.md).
 `{{S<N>}}-001`, `{{S<N>}}-002`, … in its own file. The merge assigns real IDs.
 Two parallel authors cannot collide on a number they are not allowed to write.
 
-**Model per slice.** Mechanical slice (every string is in the brief, the cases
-are a drill: required-empty, too-long, duplicate, trim) → cheapest tier.
-Judgment slice (state tables, combinations, anything where the brief describes
-behavior in prose) → mid tier. Surveyor and final reviewer → most capable.
-**Always name the model explicitly** — an omitted model inherits yours, which
-is usually the most expensive one in the run.
+**Agent and model per seat.** This plugin ships the seats as agents, so their
+models are pinned and you do not re-decide them every dispatch:
+
+| Seat | Agent | Model | Effort |
+| --- | --- | --- | --- |
+| Author, mechanical slice (every string is in the brief; the cases are a drill: required-empty, too-long, duplicate, trim) | `tc-author` | sonnet | `low` |
+| Author, judgment slice (state tables, combinations, a brief that describes behavior in prose) | `tc-author` | sonnet | `medium` |
+| Slice reviewer | `tc-review` | sonnet | `high` |
+| One source file → the target format | `tc-convert` | sonnet | `medium` |
+| Bulk extraction, a suite run | `tc-extract`, `tc-e2e-run` | haiku | `low` |
+| **Surveyor and final reviewer** | none — most capable | yours | `high` |
+
+**Always name the model and the effort explicitly**, even when dispatching a
+named agent. An omitted model inherits yours, which is the most expensive one in
+the run, and that default is how a cheap fan-out quietly becomes an expensive
+one.
+
+The surveyor and the final reviewer are the two seats worth your own model: the
+survey decides what the whole run will cover, and the final review is the last
+thing between a silent drop and the deliverable. Everything between them is work
+with a brief, and work with a brief is sonnet's.
 
 What never goes in a dispatch: the whole spec, the whole inventory, prior
 slices' cases, a summary of the run so far, or any case text at all. Everything
