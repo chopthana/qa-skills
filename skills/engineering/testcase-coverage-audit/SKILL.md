@@ -219,6 +219,25 @@ Deliver the revised workbook path and the case count, then in the reply:
 
 - **One case = one Pass/Fail.** If a tester cannot put a single verdict in the
   row, it is two cases. This is the whole point.
+- **Preconditions keep the team's own shape.** The set you are auditing belongs
+  to a team that already writes preconditions one way; a revision that invents
+  a second way is a finding you created. Read a recent workbook from the same
+  team (not only the one under audit) and match it. The shape in this team's
+  sheets is a parenthetical first line in the steps cell, then a blank line,
+  then the numbered actions, which begin at the first click:
+
+  ```
+  (Precondition มีการ daily sync ตอน 4.00AM โดยมีสาขา C01B เข้ามาในระบบ ประเภท NBA สถานะ รอเปิดทำการ)
+
+  1. เข้าสู่ระบบ
+  2. Click กะการทำงานของสาขา
+  3. Click ตั้งค่าสาขา
+  ```
+
+  The literal word `Precondition`, no colon, prose with `·` between items.
+  `1. จัดเตรียม: …` and a set-up sentence folded into step 1 are both drift —
+  rewrite them, and say in the report that you did. Take the shape from a
+  recent workbook of the same team rather than from this description.
 - **A boundary is two cases.** The last accepted value and the first rejected
   one never share a row.
 - **Appearance and dismissal are two cases.** A dialog showing up and what its
