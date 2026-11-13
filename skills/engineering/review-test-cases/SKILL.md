@@ -37,6 +37,19 @@ text is not a review.
 
 The path may be pasted without its `.xlsx` extension; the scripts add it.
 
+### When the argument is not a path
+
+A card number alone (`/review-test-cases 1234`) is the common shorthand. Find
+the workbook before doing anything else:
+
+```bash
+find "<the folder the user keeps workbooks in>" -maxdepth 2 \
+     -iname "*<argument>*.xlsx" -not -name '~$*'
+```
+
+One match: use it. Several: list them and ask which. None: say so and ask for
+the path — never guess at a card the user did not name.
+
 ---
 
 ## Mode 1 — publish the page
