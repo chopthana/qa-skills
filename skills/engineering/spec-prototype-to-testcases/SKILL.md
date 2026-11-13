@@ -272,6 +272,26 @@ Field rules:
   **Use the prefix the user confirmed** and never reuse a number.
 - `steps` / `expected` — arrays; the generator numbers them `1.`, `2.`, … with
   newlines, matching the source workbooks.
+- **A precondition is never a numbered step.** The team's workbooks put the
+  state that must already exist in a parenthetical first line of the steps
+  cell, then a blank line, then the numbered actions — and the actions start
+  from the first click a tester makes:
+
+  ```
+  (Precondition มีการ daily sync ตอน 4.00AM โดยมีสาขา C01B เข้ามาในระบบ ประเภท NBA สถานะ รอเปิดทำการ)
+
+  1. เข้าสู่ระบบ
+  2. Click กะการทำงานของสาขา
+  3. Click ตั้งค่าสาขา
+  ```
+
+  So pass `steps` as a **string** in that shape whenever a case needs set-up
+  data, and as an array only when it needs none. One parenthesis, the literal
+  word `Precondition`, no colon, prose with `·` between items — never
+  `1. จัดเตรียม: …`, never a `Pre-condition:` label, never set-up folded into
+  step 1. Read a recent workbook from the same team before you write the first
+  case and copy the shape you find; this one is from
+  `Test-cases-sprint-16/Test Case - ALC - 2275 … Branch Data Sync`.
 - `note` (the note column) — `กรณีปกติราบรื่น` for normal cases; for a flagged case
   start with a marker, e.g. `⚠️ TBC Q2: ID (HRIS) duplicate scope`. A wording
   finding names both spellings and which side it is on, e.g.
