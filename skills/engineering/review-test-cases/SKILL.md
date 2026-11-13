@@ -150,6 +150,35 @@ The script validates the whole batch first and writes nothing if any entry is
 bad, backs the workbook up before touching it, keeps the workbook's formatting,
 and re-counts the cases afterwards.
 
+### Dropping a case
+
+A review that finds a case unreachable wants it gone, not rewritten — the
+position it tests cannot exist, so no wording saves it. That is the `remove`
+operation, and it is the one the **user** has to ask for in words. A note on
+the page is a reviewer's opinion: report it, say whether the case predates
+this review round, and wait.
+
+```bash
+[{"op": "remove", "tc_id": "...", "reason": "<why, for the report>"}]
+```
+
+It closes the gap as well as deleting the row: later TC IDs move down one,
+column A's `ลำดับ` formula is rewritten per row, and in-cell references to
+the cases that moved (`เคส 041`, `เคส 045–047`, a full `PREFIX-041`) follow.
+`--keep-numbers` deletes the row and leaves the numbering alone, for a set
+whose IDs are already quoted somewhere you cannot change. Either way the
+script lists any sentence still pointing at a case that is now gone — those
+are yours to rewrite, it will not guess.
+
+Pass `--renumber-out "$WORK/renumber.json"` whenever you remove: it holds
+`{removed, renamed, dangling_refs}`, and `renamed` is how the review state
+that is keyed by TC ID moves with the cases. Walk it **from the lowest new id
+upward** so each write lands before its source is overwritten, and in the
+`cases` collection only write the documents whose verdict or note actually
+changes — in a long run of `pass` the shift is invisible, which turns a
+40-case renumber into a dozen writes. Delete the highest old id last, and
+delete the removed case's own documents in both collections.
+
 Finally, refresh the page so the reviewer sees the new wording:
 
 1. re-run `extract_cases.py` and `build_review_page.py`
@@ -172,10 +201,11 @@ waiting on BA.
 
 - **Never shorten a cell on the page.** The reviewer must see what the file
   says, newlines and repeated preconditions included.
-- **Never delete a case.** `apply_review.py` has no delete operation on purpose.
-  A case the user wants removed is removed by hand, after telling them where
-  that case came from — and only ever one this tooling added, never one that
-  was in the set before.
+- **A case is only ever dropped because the user said so.** `remove` exists,
+  but a review note asking for it is a finding to report, not an instruction —
+  say whether the case predates this review round, and let them decide. Dropping
+  one is reported like any other edit: which case, why, and what the numbering
+  did.
 - **Back up before every write**, and stop if Excel holds the file open.
 - **One case = one Pass/Fail.** If a review note turns one case into two
   verdicts, split it into a new case numbered after the set's highest, and say
@@ -207,6 +237,7 @@ header row 4, data from row 5):
 
 - `scripts/extract_cases.py` — workbook → `review.json`, verbatim.
 - `scripts/build_review_page.py` — `review.json` → the page's HTML.
-- `scripts/apply_review.py` — an explicit edit list → the workbook, in place.
+- `scripts/apply_review.py` — an explicit edit list → the workbook, in place;
+  `edit`, `add` and `remove`, with the renumbering that `remove` implies.
 - `scripts/review_state.py` — remembers which artifact belongs to which workbook.
-- `references/db-schema.md` — the three collections and their fields.
+- `references/db-schema.md` — the four collections and their fields.
