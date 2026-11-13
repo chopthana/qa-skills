@@ -1,6 +1,6 @@
 # The review page's database
 
-Three collections in the artifact's own `db`. Document ids are the TC ID with
+Four collections in the artifact's own `db`. Document ids are the TC ID with
 every character outside `A-Za-z0-9_-.~:@+` replaced by `_` (db path segments
 allow nothing else), so the real TC ID always travels in the body as well.
 
@@ -84,6 +84,29 @@ the **แก้แล้ว** filter lists them.
 
 `apply_review.py --applied-out` writes exactly these fields (plus `row` and
 `changed`, which the page ignores).
+
+## When a case is removed and the set is renumbered
+
+Document ids are TC IDs, so a renumber moves every document after the gap.
+`apply_review.py --renumber-out` writes the map that does it:
+
+```json
+{"removed": ["FEATURE-AREA-032"],
+ "renamed": {"FEATURE-AREA-033": "FEATURE-AREA-032", "…": "…"},
+ "dangling_refs": ["เคส 032"]}
+```
+
+Apply it to `cases` and to `applied`, lowest new id first so each write lands
+before its source is overwritten, then delete the highest old id — it has no
+case left to describe. In `cases`, skip the documents whose verdict and note
+come out the same: across a long run of `pass` the shift changes nothing a
+reader can see, and a 40-case renumber becomes a dozen writes instead of
+eighty. The one thing left stale is the `tc_id` field inside those skipped
+documents; the page keys off the document id and a `pass` carries no
+instruction, so nothing reads it.
+
+`dangling_refs` is not a database matter — it is the sentences in the workbook
+that still point at the case that went. Report them.
 
 ## Access
 
