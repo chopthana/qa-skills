@@ -28,6 +28,24 @@ differ per viewer and go stale. The page resolves them for display with
 `user.profiles(ids)`; `ArtifactData`'s `action: "profiles"` does the same from
 a session.
 
+## `global_fixes` — findings that hit the whole set
+
+Written from the **แก้ทั้งชุด** box above the table. Document ids are minted by
+the page (`g` + a base-36 timestamp), not TC IDs.
+
+```json
+{
+  "text": "step 4 ทุกเคส เปลี่ยนเป็น Click icon view ของกระดานนั้นบนตาราง",
+  "by": "u_...",
+  "created_at": "2026-11-13T09:00:00.000Z"
+}
+```
+
+One entry usually becomes dozens of cell edits. Expand it against the extracted
+`review.json` — never against a guess at which cases are affected — and report
+the count per entry. Entries are deleted from the page once they are applied
+and the reviewer is happy; the skill does not delete them on its own.
+
 ## `meta` — one document, `submission`
 
 Written when **ส่งกลับเพื่อแก้ไข** is pressed.
@@ -39,7 +57,8 @@ Written when **ส่งกลับเพื่อแก้ไข** is pressed.
   "by": "u_...",
   "count_pass": 41,
   "count_fix": 9,
-  "count_ask": 3
+  "count_ask": 3,
+  "count_global": 2
 }
 ```
 

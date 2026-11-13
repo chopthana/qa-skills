@@ -227,6 +227,70 @@ input[type="search"] {
   padding: 5px 10px;
 }
 
+/* --- set-wide findings -------------------------------------------------- */
+.globals {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.globals h2 { margin: 0 0 2px; font-size: 14px; font-weight: 600; display: flex; align-items: baseline; gap: 8px }
+.globals h2 .gcount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 99px;
+  padding: 1px 8px;
+}
+.ghint { margin: 0 0 12px; font-size: 12.5px; color: var(--ink-soft) }
+.glist { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px }
+.glist:empty { display: none }
+.glist li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-size: 13px;
+}
+.glist .gbody { flex: 1 1 auto; min-width: 0 }
+.glist .gtextline { white-space: pre-wrap; overflow-wrap: anywhere }
+.glist .gmeta { font-size: 11px; color: var(--ink-soft); margin-top: 4px }
+.gdel {
+  font: inherit;
+  font-size: 11.5px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink-soft);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.gdel:hover { color: var(--fix); border-color: var(--fix) }
+.grow { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap }
+#gtext {
+  flex: 1 1 320px;
+  min-width: 0;
+  min-height: 62px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  resize: vertical;
+}
+
 /* --- table -------------------------------------------------------------- */
 .scroller {
   overflow-x: auto;
@@ -444,6 +508,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     <span class="stale" id="stale" hidden>ยังอ่านผลรีวิวไม่ได้ ที่เห็นอาจไม่อัปเดต</span>
   </div>
 
+  <section class="globals" id="globals" hidden>
+    <h2>แก้ทั้งชุด <span class="gcount" id="gcount">0</span></h2>
+    <p class="ghint">สิ่งที่ต้องแก้เหมือนกันทุกเคส พิมพ์ครั้งเดียวพอ ไม่ต้องไล่กด แก้ ทีละเคส</p>
+    <ul class="glist" id="glist"></ul>
+    <div class="grow">
+      <textarea id="gtext" placeholder="เช่น step 4 ทุกเคส เปลี่ยนเป็น Click icon view ของกระดานนั้นบนตาราง"></textarea>
+      <button class="send" id="gadd">เพิ่ม</button>
+    </div>
+  </section>
+
   <div class="scroller">
     <table>
       <thead>
@@ -479,9 +553,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   var sendEl = document.getElementById("send");
   var readonlyEl = document.getElementById("readonly");
   var staleEl = document.getElementById("stale");
+  var globalsEl = document.getElementById("globals");
+  var glistEl = document.getElementById("glist");
+  var gcountEl = document.getElementById("gcount");
+  var gtextEl = document.getElementById("gtext");
+  var gaddEl = document.getElementById("gadd");
 
   var review = {};     // slug -> {tc_id, verdict, note, reviewer_id, updated_at}
   var applied = {};    // slug -> {tc_id, before, after, applied_at}
+  var globals = {};    // id -> {text, by, created_at} — findings that hit every case
   var names = {};      // reviewer_id -> display name
   var filter = "all";
   var query = "";
@@ -616,8 +696,64 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       paintRow(i);
     });
     emptyEl.hidden = shown !== 0;
-    sendEl.disabled = !canWrite || reviewed === 0;
+    sendEl.disabled = !canWrite || (reviewed === 0 && !Object.keys(globals).length);
   }
+
+  /* --- findings that hit the whole set -------------------------------- */
+  function renderGlobals() {
+    var ids = Object.keys(globals).sort(function (a, b) {
+      return String(globals[a].created_at || "").localeCompare(String(globals[b].created_at || ""));
+    });
+    gcountEl.textContent = String(ids.length);
+    glistEl.innerHTML = ids.map(function (id) {
+      var g = globals[id];
+      return '<li data-g="' + esc(id) + '">' +
+          '<div class="gbody">' +
+            '<div class="gtextline">' + esc(g.text) + "</div>" +
+            '<div class="gmeta">' + esc(names[g.by] || "ผู้รีวิว") +
+              (g.created_at ? " · " + esc(shortTime(g.created_at)) : "") + "</div>" +
+          "</div>" +
+          (canWrite ? '<button class="gdel" type="button">ลบ</button>' : "") +
+        "</li>";
+    }).join("");
+    gaddEl.disabled = !canWrite;
+    gtextEl.readOnly = !canWrite;
+  }
+
+  gaddEl.addEventListener("click", function () {
+    var text = gtextEl.value.trim();
+    if (!text || !canWrite || !db) { return; }
+    var id = "g" + Date.now().toString(36);
+    var rec = { text: text, by: myId, created_at: new Date().toISOString() };
+    globals[id] = rec;
+    gtextEl.value = "";
+    renderGlobals();
+    render();
+    enqueue("global_fixes/" + id, function () {
+      return db.collection("global_fixes").doc(id).set(rec);
+    }).catch(function () {
+      delete globals[id];
+      renderGlobals();
+      render();
+    });
+  });
+
+  glistEl.addEventListener("click", function (e) {
+    var b = e.target.closest(".gdel");
+    if (!b || !canWrite || !db) { return; }
+    var id = b.closest("li").dataset.g;
+    var kept = globals[id];
+    delete globals[id];
+    renderGlobals();
+    render();
+    enqueue("global_fixes/" + id, function () {
+      return db.collection("global_fixes").doc(id).delete();
+    }).catch(function () {
+      globals[id] = kept;
+      renderGlobals();
+      render();
+    });
+  });
 
   /* --- filters, search, mode ------------------------------------------ */
   document.getElementById("filters").addEventListener("click", function (e) {
@@ -641,6 +777,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     document.body.classList.toggle("reviewing", on);
     modeEl.checked = on;
     sendEl.hidden = !on;
+    globalsEl.hidden = !on;
     readonlyEl.hidden = !(on && !canWrite);
     lsSet("review-mode", on ? "1" : "0");
   }
@@ -701,6 +838,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   /* --- ส่งกลับ --------------------------------------------------------- */
   sendEl.addEventListener("click", function () {
     var n = counts();
+    n.globals = Object.keys(globals).length;
     lastBatch += 1;
     if (db) {
       enqueue("meta/submission", function () {
@@ -710,7 +848,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
           by: myId,
           count_pass: n.pass,
           count_fix: n.fix,
-          count_ask: n.ask
+          count_ask: n.ask,
+          count_global: n.globals
         });
       }).catch(function () {});
     }
@@ -730,6 +869,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
           "<div><b>" + n.pass + "</b>ผ่าน</div>" +
           "<div><b>" + n.fix + "</b>แก้</div>" +
           "<div><b>" + n.ask + "</b>ถาม BA</div>" +
+          (n.globals ? "<div><b>" + n.globals + "</b>แก้ทั้งชุด</div>" : "") +
         "</div>" +
         '<div class="cmd" id="cmdtext">' + esc(cmd) + "</div>" +
         '<div class="row">' +
@@ -761,6 +901,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 
   /* --- first paint, then light up ------------------------------------- */
   setMode(lsGet("review-mode") === "1");
+  renderGlobals();
   render();
 
   var loadTimer = setTimeout(function () { staleEl.hidden = false; }, 10000);
@@ -769,10 +910,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   function resolveNames() {
     if (!userNs || !userNs.profiles) { return; }
     var ids = [];
-    Object.keys(review).forEach(function (k) {
-      var id = review[k].reviewer_id;
-      if (id && ids.indexOf(id) === -1) { ids.push(id); }
-    });
+    function want(id) { if (id && ids.indexOf(id) === -1) { ids.push(id); } }
+    Object.keys(review).forEach(function (k) { want(review[k].reviewer_id); });
+    Object.keys(globals).forEach(function (k) { want(globals[k].by); });
     if (!ids.length) { return; }
     Promise.resolve(userNs.profiles(ids)).then(function (ps) {
       var changed = false;
@@ -780,7 +920,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
         var nm = (ps && ps[id] && ps[id].name) || "";
         if (nm && names[id] !== nm) { names[id] = nm; changed = true; }
       });
-      if (changed) { render(); }
+      if (changed) { render(); renderGlobals(); }
     }, function () {});
   }
 
@@ -825,6 +965,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       });
       applied = next;
       render();
+    }, function () {});
+
+    db.collection("global_fixes").onSnapshot(function (snap) {
+      var next = {};
+      snap.docs.forEach(function (d) {
+        var v = d.data();
+        if (v && v.text) { next[d.id] = v; }
+      });
+      globals = next;
+      renderGlobals();
+      render();
+      resolveNames();
     }, function () {});
 
     db.doc("meta/submission").get().then(function (snap) {
