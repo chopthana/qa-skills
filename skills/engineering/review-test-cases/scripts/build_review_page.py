@@ -16,8 +16,16 @@ The db defaults are what this page wants: everyone admitted reads, Contributor
 and above write — so a BA or PO shared in as Viewer gets a read-only page with
 no extra rules.
 
+`--focus` picks the chip the page opens on. A second review round does not
+want the cases that already passed: `--focus applied` opens on แก้แล้ว, so the
+page holds only what the last `--apply` changed or added. All the other chips
+are still there, one click away, and a focus that turns out to be empty falls
+back to ทั้งหมด rather than showing a blank page.
+
 Usage:
   python3 build_review_page.py --input review.json --output review.html
+  python3 build_review_page.py --input review.json --output review.html \
+      --focus applied      # round two: only the cases that changed
 """
 from __future__ import annotations
 
@@ -553,6 +561,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   var sendEl = document.getElementById("send");
   var readonlyEl = document.getElementById("readonly");
   var staleEl = document.getElementById("stale");
+  var filtersEl = document.getElementById("filters");
   var globalsEl = document.getElementById("globals");
   var glistEl = document.getElementById("glist");
   var gcountEl = document.getElementById("gcount");
@@ -563,7 +572,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   var applied = {};    // slug -> {tc_id, before, after, applied_at}
   var globals = {};    // id -> {text, by, created_at} — findings that hit every case
   var names = {};      // reviewer_id -> display name
-  var filter = "all";
+  var FOCUS = "__FOCUS__";
+  var filter = FOCUS;
   var query = "";
   var db = null, userNs = null, myId = "", canWrite = false;
   var lastBatch = 0;
@@ -756,16 +766,30 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   });
 
   /* --- filters, search, mode ------------------------------------------ */
-  document.getElementById("filters").addEventListener("click", function (e) {
-    var b = e.target.closest(".chip");
-    if (!b) { return; }
-    filter = b.dataset.f;
-    var chips = this.querySelectorAll(".chip");
+  function setFilter(f) {
+    filter = f;
+    var chips = filtersEl.querySelectorAll(".chip");
     for (var i = 0; i < chips.length; i++) {
-      chips[i].setAttribute("aria-pressed", chips[i] === b ? "true" : "false");
+      chips[i].setAttribute("aria-pressed", chips[i].dataset.f === f ? "true" : "false");
     }
     render();
+  }
+  filtersEl.addEventListener("click", function (e) {
+    var b = e.target.closest(".chip");
+    if (b) { setFilter(b.dataset.f); }
   });
+
+  /* A page built with --focus opens on one chip, so a second review round
+     can skip what is already settled. If that chip turns out to hold nothing
+     — no review state yet, or this viewer cannot read it — fall back to
+     ทั้งหมด once, because a blank page looks broken rather than filtered. */
+  var seen = {}, focusChecked = false;
+  function focusSeen(which) {
+    seen[which] = true;
+    if (focusChecked || FOCUS === "all" || !seen.cases || !seen.applied) { return; }
+    focusChecked = true;
+    if (!counts()[FOCUS]) { setFilter("all"); }
+  }
 
   var qt;
   qEl.addEventListener("input", function () {
@@ -902,7 +926,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   /* --- first paint, then light up ------------------------------------- */
   setMode(lsGet("review-mode") === "1");
   renderGlobals();
-  render();
+  setFilter(FOCUS);
 
   var loadTimer = setTimeout(function () { staleEl.hidden = false; }, 10000);
   function settled() { clearTimeout(loadTimer); staleEl.hidden = true; }
@@ -941,6 +965,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       canWrite = false;
       settled();
       setMode(document.body.classList.contains("reviewing"));
+      focusSeen("cases");
+      focusSeen("applied");
       render();
       return;
     }
@@ -955,7 +981,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       review = next;
       render();
       resolveNames();
-    }, function () { settled(); });
+      focusSeen("cases");
+    }, function () { settled(); focusSeen("cases"); });
 
     db.collection("applied").onSnapshot(function (snap) {
       var next = {};
@@ -965,7 +992,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       });
       applied = next;
       render();
-    }, function () {});
+      focusSeen("applied");
+    }, function () { focusSeen("applied"); });
 
     db.collection("global_fixes").onSnapshot(function (snap) {
       var next = {};
@@ -997,6 +1025,11 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--input", required=True, help="review.json from extract_cases.py")
     ap.add_argument("--output", required=True, help=".html to write")
+    ap.add_argument("--focus", default="all",
+                    choices=["all", "todo", "pass", "fix", "ask", "applied"],
+                    help="which chip the page opens on (default all); "
+                         "'applied' is the second-round view — only the cases "
+                         "a previous --apply changed or added")
     args = ap.parse_args()
 
     with open(args.input, encoding="utf-8") as fh:
@@ -1022,12 +1055,14 @@ def main() -> int:
             .replace("__CARD__", card or "เคสทดสอบ")
             .replace("__PROGRAM__", program)
             .replace("__FILE_NAME__", data["file_name"])
-            .replace("__COUNT__", str(data["count"])))
+            .replace("__COUNT__", str(data["count"]))
+            .replace("__FOCUS__", args.focus))
 
     with open(args.output, "w", encoding="utf-8") as fh:
         fh.write(html)
 
-    print(f"{title} · {data['count']} cases · {len(html):,} bytes -> {args.output}")
+    focus = "" if args.focus == "all" else f" · เปิดที่ชิป {args.focus}"
+    print(f"{title} · {data['count']} cases{focus} · {len(html):,} bytes -> {args.output}")
     return 0
 
 
