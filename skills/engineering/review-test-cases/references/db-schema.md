@@ -45,22 +45,20 @@ read back once they have.
   "tc_id": "FEATURE-AREA-013",
   "text": "…the question, with the answer options spelled out…",
   "by": "u_...",
-  "created_at": "2026-11-16T04:00:00.000Z",
-  "answer": "…what BA said; absent until someone types it…",
-  "answered_by": "u_...",
-  "answered_at": "2026-11-16T09:00:00.000Z"
+  "created_at": "2026-11-16T04:00:00.000Z"
 }
 ```
 
-A question is **not** a verdict: the same case can be `pass` and still carry
-one. That is why it has its own collection and its own column on the page,
-visible in presentation mode — BA reads it off the screen without anyone
-flipping into review mode. The **มีคำถาม** chip counts only the ones with no
-`answer` yet, so it empties as the meeting goes.
+A question is **not** a verdict, but a verdict is how it ends. The document
+holds only the question; BA's answer arrives as **แก้** plus a note, or as
+**ผ่าน**, in that case's `cases` document — one place to write, and the same
+place every other answer in the review already goes. The **มีคำถาม** chip
+counts the cases that carry a question and no verdict yet, so it empties as
+the meeting works down the list.
 
 Write `text` with the options in it, not just the question, and name the cases
-an answer would move. Once `answer` is applied to the workbook, delete the
-document — a resolved question that stays becomes noise in the next round.
+an answer would move. Once the verdict is applied to the workbook, delete the
+question document — a resolved question that stays becomes noise next round.
 
 ## `global_fixes` — findings that hit the whole set
 
