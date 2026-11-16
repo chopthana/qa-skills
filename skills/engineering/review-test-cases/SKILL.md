@@ -138,6 +138,25 @@ without ever having been แก้, because a `global_fixes` entry rewrites case
 whose own verdict was ผ่าน. Never say "แก้ N เคส" when you mean
 "แก้แล้ว N เคส".
 
+**A row never leaves while the reviewer is working in it.** The counts above
+are what the chips *count*; they are not when a row disappears. Pressing a
+verdict moves the case to another bucket instantly, and a row that vanishes on
+the press takes its comment box away before a word of the comment is written —
+which is worse than a stale list, because the reviewer then has to hunt the
+case down in ทั้งหมด to say what they meant. So a row a chip has shown stays
+on screen until that chip is pressed again. The number drops immediately, so
+the press is still acknowledged; the list tidies up when the reviewer asks it
+to.
+
+**มีคำถาม goes further: it lists all of its cases, answered or not.** Its
+count is the ones still open, but its list is every case carrying a question,
+because that chip is where BA's answer gets typed and the question text has
+to stay beside the box being typed into. It is the one chip whose list is
+wider than its bucket, and the overlap is safe: those rows show their verdict
+already recorded. The overlap that is never allowed is with ยังไม่รีวิว —
+a worklist that holds cases waiting on someone else invites a reviewer
+clearing it to press ผ่าน straight over them.
+
 ### What the page does
 
 Opens in **presentation mode**: four columns, no controls, ready to put on a
@@ -166,8 +185,9 @@ Name the cases an answer would move, so they can see what it costs.
 which is **แก้** and the note, or "it is fine as written", which is **ผ่าน** —
 so the column only ever shows the question, and the verdict is what resolves
 it. The **มีคำถาม** chip counts the cases that still have no verdict, so it
-empties as the meeting works down the list, and a resolved question reaches
-`--apply` as an ordinary verdict.
+empties as the meeting works down the list, while its rows all stay put —
+the question has to be readable next to the box the answer goes in. A resolved
+question reaches `--apply` as an ordinary verdict.
 
 Above the table sits **แก้ทั้งชุด**: findings that hit every case, typed once.
 Most sets have a few — a navigation step that names the wrong control, a

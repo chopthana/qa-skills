@@ -635,6 +635,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   var FOCUS = "__FOCUS__";
   var filter = FOCUS;
   var query = "";
+  /* Rows a chip has shown stay on screen until the chip is pressed again:
+     a verdict moves the case out of its bucket at once, and a row that
+     vanishes mid-thought takes the comment box with it. The count drops
+     immediately, so the press is still acknowledged. */
+  var pinned = {};
   var db = null, userNs = null, myId = "", canWrite = false;
   var lastBatch = 0;
 
@@ -802,6 +807,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     return "todo";
   }
 
+  /* A chip's COUNT is its bucket's size, so the counts partition the set and
+     every work chip counts down to zero. The LIST a chip shows is wider in one
+     place: มีคำถาม keeps a case after its verdict is recorded, because BA's
+     answer is typed into that row's box — a row that leaves on the press takes
+     the box with it before a word of it is written. */
+  function inFilter(c, f) {
+    if (f === "all") { return true; }
+    if (f === "question") {
+      var q = questions[SLUG[c.tc_id]];
+      return !!(q && q.text);
+    }
+    return bucket(c) === f;
+  }
+
   function counts() {
     var n = { all: CASES.length, todo: 0, pass: 0, fix: 0, question: 0, applied: 0, added: 0 };
     CASES.forEach(function (c) { n[bucket(c)]++; });
@@ -820,7 +839,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 
     var shown = 0;
     CASES.forEach(function (c, i) {
-      var ok = filter === "all" ? true : bucket(c) === filter;
+      var ok = inFilter(c, filter) || !!pinned[i];
+      if (ok && filter !== "all") { pinned[i] = true; }
       if (ok && query) { ok = searchIndex[i].indexOf(query) !== -1; }
       rowsEl.children[i].hidden = !ok;
       if (ok) { shown++; }
@@ -889,6 +909,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   /* --- filters, search, mode ------------------------------------------ */
   function setFilter(f) {
     filter = f;
+    pinned = {};
     var chips = filtersEl.querySelectorAll(".chip");
     for (var i = 0; i < chips.length; i++) {
       chips[i].setAttribute("aria-pressed", chips[i].dataset.f === f ? "true" : "false");
@@ -916,7 +937,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   var qt;
   qEl.addEventListener("input", function () {
     clearTimeout(qt);
-    qt = setTimeout(function () { query = qEl.value.trim().toLowerCase(); render(); }, 150);
+    qt = setTimeout(function () {
+      query = qEl.value.trim().toLowerCase();
+      pinned = {};
+      render();
+    }, 150);
   });
 
   function setMode(on) {
