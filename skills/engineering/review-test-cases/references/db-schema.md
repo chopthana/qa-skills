@@ -75,15 +75,31 @@ the **แก้แล้ว** filter lists them.
 ```json
 {
   "tc_id": "FEATURE-AREA-004",
-  "field": "expected",
+  "kind": "edit",
+  "fields": [
+    {"field": "expected", "before": "…the cell as it was…", "after": "…as it is now…"},
+    {"field": "steps", "before": "…", "after": "…"}
+  ],
+  "field": "expected, steps",
   "before": "…the cell as it was…",
   "after": "…the cell as it is now…",
   "applied_at": "2026-11-13T09:05:00+0700"
 }
 ```
 
-`apply_review.py --applied-out` writes exactly these fields (plus `row` and
-`changed`, which the page ignores).
+`fields` is what the page renders: each changed cell's old text sits under the
+new one, in that cell's own column, so the next round judges the change rather
+than the result alone. One case usually changes several cells, which is why it
+is a list; `field` / `before` / `after` repeat the most substantive one so a
+page built before `fields` existed still shows something.
+
+`kind` is `"edit"`, or `"add"` for a case the round appended — those have no
+`before` to show, so the page gives them the **เพิ่มใหม่** chip and an
+✚ badge instead of a comparison. `apply_review.py` also emits
+`kind: "remove"`; that one is for the chat report, never for the db, since the
+case it names is gone.
+
+`apply_review.py --applied-out` writes exactly this, one object per case.
 
 ## When a case is removed and the set is renumbered
 

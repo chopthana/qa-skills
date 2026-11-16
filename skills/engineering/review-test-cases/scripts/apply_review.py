@@ -210,6 +210,39 @@ def retune_validation(ws, last: int) -> None:
             dv.sqref = " ".join(fixed)
 
 
+RANK = {"expected": 3, "steps": 2, "topic": 1, "note": 0}
+
+
+def as_documents(applied: list[dict], stamped: str) -> list[dict]:
+    """Group the per-cell record into one document per case, db-shaped.
+
+    The review page reads these back to show each changed cell beside what it
+    said before, so `fields` carries every cell of the case, not a summary.
+    `field` / `before` / `after` stay alongside for a page built before
+    `fields` existed — the most substantive cell of the case.
+    """
+    docs: dict[str, dict] = {}
+    for a in applied:
+        d = docs.setdefault(a["tc_id"], {
+            "tc_id": a["tc_id"], "kind": "edit", "fields": [],
+            "applied_at": a.get("applied_at", stamped),
+        })
+        if a["field"] == "เคสใหม่":
+            d["kind"] = "add"
+        elif a["field"] == "เคสที่ลบ":
+            d["kind"] = "remove"
+        elif a["changed"]:
+            d["fields"].append({"field": a["field"],
+                                "before": a["before"], "after": a["after"]})
+    for d in docs.values():
+        best = max(d["fields"], key=lambda f: RANK.get(f["field"], -1), default=None)
+        d["field"] = ", ".join(f["field"] for f in d["fields"]) or {
+            "add": "เคสใหม่", "remove": "เคสที่ลบ"}.get(d["kind"], "")
+        d["before"] = best["before"] if best else ""
+        d["after"] = best["after"] if best else ""
+    return list(docs.values())
+
+
 def resolve_input(path: str) -> str:
     if os.path.isfile(path):
         return path
@@ -230,7 +263,8 @@ def main() -> int:
     ap.add_argument("--input", required=True, help="the workbook to edit in place")
     ap.add_argument("--edits", required=True, help="JSON list of {tc_id, field, value}")
     ap.add_argument("--backup-dir", required=True, help="where the pre-edit copy goes")
-    ap.add_argument("--applied-out", help="write before/after per case here")
+    ap.add_argument("--applied-out",
+                    help="one db-shaped document per case (tc_id, kind, fields[])")
     ap.add_argument("--renumber-out", help="write the removed / old->new map here")
     ap.add_argument("--keep-numbers", action="store_true",
                     help="after a remove, leave the TC IDs as they are (gap stays)")
@@ -408,7 +442,7 @@ def main() -> int:
         for a in applied:
             a["applied_at"] = stamped
         with open(args.applied_out, "w", encoding="utf-8") as fh:
-            json.dump(applied, fh, ensure_ascii=False, indent=1)
+            json.dump(as_documents(applied, stamped), fh, ensure_ascii=False, indent=1)
         print(f"-> {args.applied_out}")
 
     if args.renumber_out:

@@ -98,10 +98,19 @@ python3 "$SK/build_review_page.py" --input "$WORK/review.json" \
     --output "$WORK/review.html" --focus applied
 ```
 
+Each of those cases carries what its cells said **before** this round, under
+a collapsed "ของเดิมก่อนแก้" in the column that changed — Expected opens
+expanded, the others on a click. A second round is a judgement on the change,
+not on the result alone, so the old wording has to be on the same screen.
+
+Cases the round **added** have no "before" to show. They get a **เพิ่มใหม่**
+chip of their own (a subset of แก้แล้ว, so the landing view still holds both)
+and the badge reads ✚ เคสใหม่รอบนี้ instead.
+
 Every other chip is still one click away, and a focus that turns out empty
 falls back to ทั้งหมด rather than showing a blank page. `--focus` also takes
-`todo`, `pass`, `fix` and `ask` — `todo` is the one for picking a long review
-back up where it stopped.
+`added`, `todo`, `pass`, `fix` and `ask` — `todo` is the one for picking a
+long review back up where it stopped.
 
 Use it from the second round on. The first publish of a set has nothing
 applied yet, so it opens on ทั้งหมด either way.
@@ -206,9 +215,14 @@ Finally, refresh the page so the reviewer sees the new wording:
 2. publish the same `file_path` again, passing the recorded `url`, and **omit
    `capabilities` and `icon`** so the stored declaration and icon carry over
 3. push `applied.json` into the `applied` collection with `ArtifactData`
-   `action: "batch"` — one document per case, id = the TC ID with every
-   character outside `A-Za-z0-9_-.~:@+` replaced by `_`, body
-   `{tc_id, field, before, after, applied_at}`
+   `action: "batch"` — `--applied-out` already writes it one document per
+   case, in the db's shape, so each entry goes in as it stands with
+   `file_path`. The doc id is the TC ID with every character outside
+   `A-Za-z0-9_-.~:@+` replaced by `_`. Two things to do by hand: skip the
+   `kind: "remove"` entries, which describe a case that no longer exists, and
+   put every id through `renumber.json` first when the round removed one —
+   `--applied-out` is written before the renumber, so its ids are the old
+   ones
 
 Leave the verdicts in place: the reviewer should still see what they said next
 to what it became.
