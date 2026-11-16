@@ -164,6 +164,17 @@ screen in a meeting. The QA flips **โหมดรีวิว** to reveal, per
 buttons — **ผ่าน** / **แก้** — and a box for what to change.
 **ส่งกลับเพื่อแก้ไข** stamps the batch and shows the `--apply` command to paste.
 
+The order of work is press **แก้**, type what to change, then **ส่งกลับ** — so
+the page protects both ends of it. The box saves on a debounce, and a comment
+typed and sent in the same breath would otherwise never be written, so
+**ส่งกลับ** flushes every pending box before it stamps anything. And a **แก้**
+whose box is still empty is an instruction with no content: `--apply` is told
+to change the case and nothing else, which is how a round comes back
+unchanged. Pressing **ส่งกลับ** with any of those asks first, names them by
+their ลำดับ, and offers to jump to the first box — never a silent pass and
+never a hard block, because the reviewer may genuinely mean to send the rest.
+**ผ่าน** needs no comment, so it is never counted here.
+
 ### Open questions are a column, not a verdict
 
 A case can be fine as written and still be waiting on BA — "is this really the
