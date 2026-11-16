@@ -86,6 +86,26 @@ Tell the user the link, and tell them plainly that the artifact is private
 until they share it from the page's own Share menu — BA and PO cannot open it
 before that.
 
+### Round two: only what changed
+
+A second round does not want the cases that already passed — scrolling past
+fifty settled rows to reach nine is how a reviewer gives up. Build the page
+with `--focus applied` and it opens on the **แก้แล้ว** chip, holding only the
+cases the last `--apply` changed or added:
+
+```bash
+python3 "$SK/build_review_page.py" --input "$WORK/review.json" \
+    --output "$WORK/review.html" --focus applied
+```
+
+Every other chip is still one click away, and a focus that turns out empty
+falls back to ทั้งหมด rather than showing a blank page. `--focus` also takes
+`todo`, `pass`, `fix` and `ask` — `todo` is the one for picking a long review
+back up where it stopped.
+
+Use it from the second round on. The first publish of a set has nothing
+applied yet, so it opens on ทั้งหมด either way.
+
 ### What the page does
 
 Opens in **presentation mode**: four columns, no controls, ready to put on a
@@ -181,7 +201,8 @@ delete the removed case's own documents in both collections.
 
 Finally, refresh the page so the reviewer sees the new wording:
 
-1. re-run `extract_cases.py` and `build_review_page.py`
+1. re-run `extract_cases.py`, then `build_review_page.py --focus applied` so
+   the next round opens on the cases this pass touched
 2. publish the same `file_path` again, passing the recorded `url`, and **omit
    `capabilities` and `icon`** so the stored declaration and icon carry over
 3. push `applied.json` into the `applied` collection with `ArtifactData`
@@ -236,7 +257,8 @@ header row 4, data from row 5):
 ## Files
 
 - `scripts/extract_cases.py` — workbook → `review.json`, verbatim.
-- `scripts/build_review_page.py` — `review.json` → the page's HTML.
+- `scripts/build_review_page.py` — `review.json` → the page's HTML;
+  `--focus` picks the chip it opens on.
 - `scripts/apply_review.py` — an explicit edit list → the workbook, in place;
   `edit`, `add` and `remove`, with the renumbering that `remove` implies.
 - `scripts/review_state.py` — remembers which artifact belongs to which workbook.
