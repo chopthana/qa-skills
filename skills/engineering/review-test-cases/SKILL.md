@@ -115,6 +115,18 @@ long review back up where it stopped.
 Use it from the second round on. The first publish of a set has nothing
 applied yet, so it opens on ทั้งหมด either way.
 
+The chips answer three different questions, and they are easy to confuse:
+
+| chip | what it is |
+| --- | --- |
+| ผ่าน / แก้ / ถาม BA | the verdict **someone gave** — an opinion |
+| แก้แล้ว / เพิ่มใหม่ | what the last `--apply` **did to the file** — history |
+| ยังไม่รีวิว | what is **still waiting** for a verdict this round |
+
+A case can be แก้แล้ว without ever having been แก้: a `global_fixes` entry
+rewrites cases whose own verdict was ผ่าน. Keep the three apart when you
+report, and never say "แก้ N เคส" when you mean "แก้แล้ว N เคส".
+
 ### What the page does
 
 Opens in **presentation mode**: four columns, no controls, ready to put on a
@@ -214,7 +226,16 @@ Finally, refresh the page so the reviewer sees the new wording:
    the next round opens on the cases this pass touched
 2. publish the same `file_path` again, passing the recorded `url`, and **omit
    `capabilities` and `icon`** so the stored declaration and icon carry over
-3. push `applied.json` into the `applied` collection with `ArtifactData`
+3. clear the verdict of every case this pass changed — delete its `cases`
+   document, after copying its note into that case's `applied.asked`. The
+   verdict was an instruction and the instruction has been carried out, so
+   leaving it makes ยังไม่รีวิว read 0 when in truth the whole batch is
+   waiting to be looked at again. Afterwards ยังไม่รีวิว equals แก้แล้ว, one
+   number that counts down as the next round works through it, and the page
+   still shows what was asked next to what it became. A case changed only by
+   a `global_fixes` entry has no note of its own: put the entry's sentence in
+   `asked` instead.
+4. push `applied.json` into the `applied` collection with `ArtifactData`
    `action: "batch"` — `--applied-out` already writes it one document per
    case, in the db's shape, so each entry goes in as it stands with
    `file_path`. The doc id is the TC ID with every character outside
