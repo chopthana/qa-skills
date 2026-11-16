@@ -23,6 +23,12 @@ Written by the page when someone presses a verdict button or types in the box.
 A case with no verdict has **no document** — clearing a verdict deletes it.
 So "ยังไม่รีวิว" is the absence of a row, never `verdict: ""`.
 
+**`--apply` clears the verdicts it answered.** A `fix` whose edit has landed
+is a spent instruction: leaving it makes ยังไม่รีวิว read 0 while the whole
+batch is in fact waiting to be looked at again. Delete those documents once
+the edits are in the workbook, after copying each note into that case's
+`applied.asked`, and the next round opens with ยังไม่รีวิว equal to แก้แล้ว.
+
 `reviewer_id` is the opaque id from the `user` capability, never a name: names
 differ per viewer and go stale. The page resolves them for display with
 `user.profiles(ids)`; `ArtifactData`'s `action: "profiles"` does the same from
@@ -81,6 +87,7 @@ the **แก้แล้ว** filter lists them.
     {"field": "steps", "before": "…", "after": "…"}
   ],
   "field": "expected, steps",
+  "asked": "…the note that asked for this change…",
   "before": "…the cell as it was…",
   "after": "…the cell as it is now…",
   "applied_at": "2026-11-13T09:05:00+0700"
@@ -92,6 +99,12 @@ new one, in that cell's own column, so the next round judges the change rather
 than the result alone. One case usually changes several cells, which is why it
 is a list; `field` / `before` / `after` repeat the most substantive one so a
 page built before `fields` existed still shows something.
+
+`asked` is what the reviewer wrote that produced the change — their own note,
+or the `global_fixes` sentence when the case was swept up by one. It is the
+third side of the comparison the page shows: what was asked, what the cell
+used to say, what it says now. It is also where that note survives, since the
+verdict document it came from is deleted.
 
 `kind` is `"edit"`, or `"add"` for a case the round appended — those have no
 `before` to show, so the page gives them the **เพิ่มใหม่** chip and an

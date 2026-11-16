@@ -404,6 +404,13 @@ tr[data-v="ask"]  > td:first-child { box-shadow: inset 3px 0 0 var(--ask) }
 }
 .applied .diff { color: var(--ink-soft); white-space: pre-wrap; margin-top: 4px; overflow-wrap: anywhere }
 .applied.new { color: var(--fix); background: var(--fix-bg) }
+.applied .asked {
+  margin-top: 5px;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11.5px;
+}
 
 /* the cell as it read before this round's --apply, next to what replaced it */
 .was { margin-top: 8px; font-size: 12px }
@@ -705,7 +712,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     if (ap) {
       apEl.hidden = false;
       apEl.innerHTML = (isNew ? "✚ เคสใหม่รอบนี้" : "✔ แก้แล้ว") +
-        (ap.applied_at ? " · " + esc(shortTime(ap.applied_at)) : "");
+        (ap.applied_at ? " · " + esc(shortTime(ap.applied_at)) : "") +
+        (ap.asked ? '<div class="asked">สิ่งที่สั่งไว้: ' + esc(ap.asked) + "</div>" : "");
     } else {
       apEl.hidden = true;
     }
