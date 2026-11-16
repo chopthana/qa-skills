@@ -787,16 +787,24 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     return !!ap && (ap.kind === "add" || ap.field === "เคสใหม่");
   }
 
+  /* Every case sits in exactly one bucket, and every bucket but ผ่าน / แก้ is
+     work still to do — so each chip counts down to zero as the review goes,
+     and nothing is listed twice. A verdict settles a case whatever its history,
+     which is why it wins over the rest. */
+  function bucket(c) {
+    var key = SLUG[c.tc_id];
+    var v = (review[key] || {}).verdict;
+    if (v === "pass" || v === "fix") { return v; }
+    var q = questions[key];
+    if (q && q.text) { return "question"; }
+    var ap = applied[key];
+    if (ap) { return wasAdded(ap) ? "added" : "applied"; }
+    return "todo";
+  }
+
   function counts() {
     var n = { all: CASES.length, todo: 0, pass: 0, fix: 0, question: 0, applied: 0, added: 0 };
-    CASES.forEach(function (c) {
-      var v = (review[SLUG[c.tc_id]] || {}).verdict;
-      if (v === "pass" || v === "fix") { n[v]++; } else { n.todo++; }
-      var q = questions[SLUG[c.tc_id]];
-      if (q && q.text && !v) { n.question++; }
-      var ap = applied[SLUG[c.tc_id]];
-      if (ap) { n.applied++; if (wasAdded(ap)) { n.added++; } }
-    });
+    CASES.forEach(function (c) { n[bucket(c)]++; });
     return n;
   }
 
@@ -812,13 +820,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 
     var shown = 0;
     CASES.forEach(function (c, i) {
-      var v = (review[SLUG[c.tc_id]] || {}).verdict || "";
-      var ok = filter === "all" ? true
-        : filter === "todo" ? !v
-        : filter === "question" ? (!!(questions[SLUG[c.tc_id]] || {}).text && !v)
-        : filter === "applied" ? !!applied[SLUG[c.tc_id]]
-        : filter === "added" ? wasAdded(applied[SLUG[c.tc_id]])
-        : v === filter;
+      var ok = filter === "all" ? true : bucket(c) === filter;
       if (ok && query) { ok = searchIndex[i].indexOf(query) !== -1; }
       rowsEl.children[i].hidden = !ok;
       if (ok) { shown++; }
