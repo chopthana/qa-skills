@@ -23,12 +23,18 @@ Written by the page when someone presses a verdict button or types in the box.
 A case with no verdict has **no document** — clearing a verdict deletes it.
 So "ยังไม่รีวิว" is the absence of a row, never `verdict: ""`.
 
-The page puts each case in exactly one chip, deciding in the order verdict →
+The page counts each case in exactly one chip, deciding in the order verdict →
 open question → added → changed → ยังไม่รีวิว, so the counts partition the set
 and every chip but ผ่าน / แก้ counts down to zero as the round goes. That is
 why a verdict is what empties `questions`, `applied` and `added` from the
 reviewer's point of view, while the documents themselves stay for the badge
 and the before/after.
+
+What a chip *shows* is deliberately stickier than what it counts. A row stays
+listed until its chip is pressed again, so pressing a verdict never pulls the
+comment box out from under the reviewer, and **มีคำถาม** lists every case with
+a question whatever its verdict, because that row is where the answer is
+typed.
 
 **`--apply` clears the verdicts it answered.** A `fix` whose edit has landed
 is a spent instruction: leaving it makes ยังไม่รีวิว read 0 while the whole
@@ -61,7 +67,8 @@ holds only the question; BA's answer arrives as **แก้** plus a note, or as
 **ผ่าน**, in that case's `cases` document — one place to write, and the same
 place every other answer in the review already goes. The **มีคำถาม** chip
 counts the cases that carry a question and no verdict yet, so it empties as
-the meeting works down the list.
+the meeting works down the list, and lists them all either way, so the answer
+can still be typed — and corrected — next to the question it answers.
 
 Write `text` with the options in it, not just the question, and name the cases
 an answer would move. Once the verdict is applied to the workbook, delete the
