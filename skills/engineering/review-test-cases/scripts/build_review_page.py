@@ -403,6 +403,38 @@ tr[data-v="ask"]  > td:first-child { box-shadow: inset 3px 0 0 var(--ask) }
   padding: 6px 8px;
 }
 .applied .diff { color: var(--ink-soft); white-space: pre-wrap; margin-top: 4px; overflow-wrap: anywhere }
+.applied.new { color: var(--fix); background: var(--fix-bg) }
+
+/* the cell as it read before this round's --apply, next to what replaced it */
+.was { margin-top: 8px; font-size: 12px }
+.was > summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  user-select: none;
+}
+.was > summary::-webkit-details-marker { display: none }
+.was > summary::before { content: "▸"; font-size: 9px; line-height: 1 }
+.was[open] > summary::before { content: "▾" }
+.was > summary:hover { border-color: var(--fix); color: var(--fix) }
+.was .old {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--fix);
+  background: var(--fix-bg);
+  border-radius: 0 6px 6px 0;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.was .gone { font-style: italic; opacity: .75 }
 
 body:not(.reviewing) .c-review { display: none }
 body:not(.reviewing) tr > td:first-child { box-shadow: none }
@@ -508,6 +540,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       <button class="chip" data-f="fix" aria-pressed="false">แก้ <span class="n" data-c="fix"></span></button>
       <button class="chip" data-f="ask" aria-pressed="false">ถาม BA <span class="n" data-c="ask"></span></button>
       <button class="chip" data-f="applied" aria-pressed="false">แก้แล้ว <span class="n" data-c="applied"></span></button>
+      <button class="chip" data-f="added" aria-pressed="false">เพิ่มใหม่ <span class="n" data-c="added"></span></button>
     </div>
     <input type="search" id="q" placeholder="ค้นหาข้อความในเคส" autocomplete="off">
     <label class="toggle" for="mode"><input type="checkbox" id="mode"> โหมดรีวิว</label>
@@ -612,10 +645,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
           (c.priority ? '<span class="badge">' + esc(c.priority) + '</span>' : '') +
           (c.type ? '<span class="badge">' + esc(c.type) + '</span>' : '') +
           (c.status ? '<span class="badge">' + esc(c.status) + '</span>' : '') +
-        '</div></td>' +
-      '<td class="c-steps" data-label="Precondition + Step"><div class="cell">' + esc(c.steps) + '</div></td>' +
+        '</div>' +
+        '<div class="wasbox" data-f="topic"></div></td>' +
+      '<td class="c-steps" data-label="Precondition + Step"><div class="cell">' + esc(c.steps) + '</div>' +
+        '<div class="wasbox" data-f="steps"></div></td>' +
       '<td class="c-exp" data-label="Expected"><div class="cell">' + esc(c.expected) + '</div>' +
-        (c.note ? '<div class="note">' + esc(c.note) + '</div>' : '') + '</td>' +
+        '<div class="wasbox" data-f="expected"></div>' +
+        (c.note ? '<div class="note">' + esc(c.note) + '</div>' : '') +
+        '<div class="wasbox" data-f="note"></div></td>' +
       '<td class="c-review" data-label="รีวิว">' +
         '<div class="verdicts">' +
           '<button class="vbtn" data-k="pass" aria-pressed="false">ผ่าน</button>' +
@@ -663,22 +700,53 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 
     var ap = applied[SLUG[c.tc_id]];
     var apEl = tr.querySelector(".applied");
+    var isNew = wasAdded(ap);
+    apEl.classList.toggle("new", isNew);
     if (ap) {
       apEl.hidden = false;
-      apEl.innerHTML = "✔ แก้แล้ว" +
-        (ap.applied_at ? " · " + esc(shortTime(ap.applied_at)) : "") +
-        (ap.after ? '<div class="diff">ของใหม่: ' + esc(clip(ap.after)) + "</div>" : "");
+      apEl.innerHTML = (isNew ? "✚ เคสใหม่รอบนี้" : "✔ แก้แล้ว") +
+        (ap.applied_at ? " · " + esc(shortTime(ap.applied_at)) : "");
     } else {
       apEl.hidden = true;
     }
+
+    /* Each column carries what it said before this round, so the reviewer
+       judges the change and not just the result. Collapsed by default —
+       a second round is read for what moved, not for everything twice. */
+    var olds = {};
+    changedFields(ap).forEach(function (f) { olds[f.field] = f; });
+    var boxes = tr.querySelectorAll(".wasbox");
+    for (var w = 0; w < boxes.length; w++) {
+      var box = boxes[w];
+      var f = olds[box.dataset.f];
+      if (!f || isNew) { box.hidden = true; box.innerHTML = ""; continue; }
+      box.hidden = false;
+      box.innerHTML =
+        '<details class="was"' + (box.dataset.f === "expected" ? " open" : "") + '>' +
+          '<summary>ของเดิมก่อนแก้</summary>' +
+          '<div class="old' + (f.before ? '' : ' gone') + '">' +
+            esc(f.before || "(เดิมว่าง)") + '</div>' +
+        '</details>';
+    }
+  }
+
+  /* An applied row is either one field (the old shape) or several. */
+  function changedFields(ap) {
+    if (!ap) { return []; }
+    if (ap.fields && ap.fields.length) { return ap.fields; }
+    return ap.field ? [{ field: ap.field, before: ap.before, after: ap.after }] : [];
+  }
+  function wasAdded(ap) {
+    return !!ap && (ap.kind === "add" || ap.field === "เคสใหม่");
   }
 
   function counts() {
-    var n = { all: CASES.length, todo: 0, pass: 0, fix: 0, ask: 0, applied: 0 };
+    var n = { all: CASES.length, todo: 0, pass: 0, fix: 0, ask: 0, applied: 0, added: 0 };
     CASES.forEach(function (c) {
       var v = (review[SLUG[c.tc_id]] || {}).verdict;
       if (v === "pass" || v === "fix" || v === "ask") { n[v]++; } else { n.todo++; }
-      if (applied[SLUG[c.tc_id]]) { n.applied++; }
+      var ap = applied[SLUG[c.tc_id]];
+      if (ap) { n.applied++; if (wasAdded(ap)) { n.added++; } }
     });
     return n;
   }
@@ -699,6 +767,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       var ok = filter === "all" ? true
         : filter === "todo" ? !v
         : filter === "applied" ? !!applied[SLUG[c.tc_id]]
+        : filter === "added" ? wasAdded(applied[SLUG[c.tc_id]])
         : v === filter;
       if (ok && query) { ok = searchIndex[i].indexOf(query) !== -1; }
       rowsEl.children[i].hidden = !ok;
@@ -1026,7 +1095,7 @@ def main() -> int:
     ap.add_argument("--input", required=True, help="review.json from extract_cases.py")
     ap.add_argument("--output", required=True, help=".html to write")
     ap.add_argument("--focus", default="all",
-                    choices=["all", "todo", "pass", "fix", "ask", "applied"],
+                    choices=["all", "todo", "pass", "fix", "ask", "applied", "added"],
                     help="which chip the page opens on (default all); "
                          "'applied' is the second-round view — only the cases "
                          "a previous --apply changed or added")
