@@ -330,7 +330,6 @@ tbody td {
 tbody tr:last-child td { border-bottom: 0 }
 tr[data-v="pass"] > td:first-child { box-shadow: inset 3px 0 0 var(--pass) }
 tr[data-v="fix"]  > td:first-child { box-shadow: inset 3px 0 0 var(--fix) }
-tr[data-v="ask"]  > td:first-child { box-shadow: inset 3px 0 0 var(--ask) }
 
 .c-no { width: 56px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums }
 .c-no .tc { display: block; font-size: 10px; margin-top: 4px; word-break: break-all; line-height: 1.3 }
@@ -361,6 +360,45 @@ tr[data-v="ask"]  > td:first-child { box-shadow: inset 3px 0 0 var(--ask) }
 }
 .c-review { width: 200px; min-width: 180px }
 
+/* --- the open-question column ------------------------------------------- */
+.c-q { width: 240px; min-width: 200px }
+body:not(.has-q) .c-q { display: none }
+.qtext {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--ask);
+  background: var(--ask-bg);
+  border-radius: 0 6px 6px 0;
+}
+.qans {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--pass);
+  background: var(--pass-bg);
+  border-radius: 0 6px 6px 0;
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.qans b { color: var(--pass) }
+.qbox {
+  margin-top: 8px;
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 7px 9px;
+}
+body:not(.reviewing) .qbox { display: none }
+tr[data-q="open"] > td:first-child { box-shadow: inset 3px 0 0 var(--ask) }
+
 /* --- verdict controls --------------------------------------------------- */
 .verdicts { display: flex; flex-wrap: wrap; gap: 5px }
 .vbtn {
@@ -378,7 +416,6 @@ tr[data-v="ask"]  > td:first-child { box-shadow: inset 3px 0 0 var(--ask) }
 .vbtn[aria-pressed="true"] { font-weight: 600 }
 .vbtn[data-k="pass"][aria-pressed="true"] { background: var(--pass-bg); border-color: var(--pass); color: var(--pass) }
 .vbtn[data-k="fix"][aria-pressed="true"]  { background: var(--fix-bg);  border-color: var(--fix);  color: var(--fix) }
-.vbtn[data-k="ask"][aria-pressed="true"]  { background: var(--ask-bg);  border-color: var(--ask);  color: var(--ask) }
 .fixbox {
   margin-top: 8px;
   width: 100%;
@@ -518,7 +555,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   tbody tr > td:first-child { box-shadow: none }
   tr[data-v="pass"] { border-left: 3px solid var(--pass) }
   tr[data-v="fix"]  { border-left: 3px solid var(--fix) }
-  tr[data-v="ask"]  { border-left: 3px solid var(--ask) }
+  tr[data-q="open"] { border-left: 3px solid var(--ask) }
   .c-no { display: flex; gap: 8px; align-items: baseline }
   /* as a flex item the id would otherwise shrink to one character per line */
   .c-no .tc { margin-top: 0; flex: 1 1 auto; min-width: 0; word-break: normal; overflow-wrap: anywhere }
@@ -545,7 +582,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       <button class="chip" data-f="todo" aria-pressed="false">ยังไม่รีวิว <span class="n" data-c="todo"></span></button>
       <button class="chip" data-f="pass" aria-pressed="false">ผ่าน <span class="n" data-c="pass"></span></button>
       <button class="chip" data-f="fix" aria-pressed="false">แก้ <span class="n" data-c="fix"></span></button>
-      <button class="chip" data-f="ask" aria-pressed="false">ถาม BA <span class="n" data-c="ask"></span></button>
+      <button class="chip" data-f="question" aria-pressed="false">มีคำถาม <span class="n" data-c="question"></span></button>
       <button class="chip" data-f="applied" aria-pressed="false">แก้แล้ว <span class="n" data-c="applied"></span></button>
       <button class="chip" data-f="added" aria-pressed="false">เพิ่มใหม่ <span class="n" data-c="added"></span></button>
     </div>
@@ -574,6 +611,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
           <th class="c-topic">หัวข้อ</th>
           <th class="c-steps">Precondition + Step</th>
           <th class="c-exp">Expected</th>
+          <th class="c-q">คำถาม / คำตอบ</th>
           <th class="c-review">รีวิว</th>
         </tr>
       </thead>
@@ -611,6 +649,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   var review = {};     // slug -> {tc_id, verdict, note, reviewer_id, updated_at}
   var applied = {};    // slug -> {tc_id, before, after, applied_at}
   var globals = {};    // id -> {text, by, created_at} — findings that hit every case
+  var questions = {};  // slug -> {tc_id, text, answer, by, …} — open with BA / PO
   var names = {};      // reviewer_id -> display name
   var FOCUS = "__FOCUS__";
   var filter = FOCUS;
@@ -660,11 +699,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
         '<div class="wasbox" data-f="expected"></div>' +
         (c.note ? '<div class="note">' + esc(c.note) + '</div>' : '') +
         '<div class="wasbox" data-f="note"></div></td>' +
+      '<td class="c-q" data-label="คำถาม / คำตอบ">' +
+        '<div class="qtext" hidden></div>' +
+        '<div class="qans" hidden></div>' +
+        '<textarea class="qbox" hidden placeholder="คำตอบจาก BA / PO"></textarea>' +
+      '</td>' +
       '<td class="c-review" data-label="รีวิว">' +
         '<div class="verdicts">' +
           '<button class="vbtn" data-k="pass" aria-pressed="false">ผ่าน</button>' +
           '<button class="vbtn" data-k="fix" aria-pressed="false">แก้</button>' +
-          '<button class="vbtn" data-k="ask" aria-pressed="false">ถาม BA</button>' +
         '</div>' +
         '<textarea class="fixbox" id="fix-' + esc(SLUG[c.tc_id]) + '" hidden ' +
           'placeholder="แก้เป็นอะไร / คำถามถึง BA"></textarea>' +
@@ -692,8 +735,31 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       btns[b].disabled = !canWrite;
     }
 
+    /* A question is not a verdict: it rides alongside one, in its own column,
+       and stays until BA answers it. */
+    var q = questions[SLUG[c.tc_id]];
+    var qEl = tr.querySelector(".qtext");
+    var aEl = tr.querySelector(".qans");
+    var qBox = tr.querySelector(".qbox");
+    if (q && q.text) {
+      tr.dataset.q = q.answer ? "answered" : "open";
+      qEl.hidden = false; qEl.textContent = q.text;
+      qBox.hidden = false;
+      qBox.readOnly = !canWrite;
+      if (document.activeElement !== qBox) { qBox.value = q.answer || ""; }
+      if (q.answer) {
+        aEl.hidden = false;
+        aEl.innerHTML = "<b>ตอบแล้ว</b> " + esc(q.answer);
+      } else {
+        aEl.hidden = true;
+      }
+    } else {
+      tr.removeAttribute("data-q");
+      qEl.hidden = true; aEl.hidden = true; qBox.hidden = true;
+    }
+
     var box = tr.querySelector(".fixbox");
-    box.hidden = !(v === "fix" || v === "ask");
+    box.hidden = !(v === "fix");
     box.readOnly = !canWrite;
     if (document.activeElement !== box) { box.value = r.note || ""; }
 
@@ -749,10 +815,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   }
 
   function counts() {
-    var n = { all: CASES.length, todo: 0, pass: 0, fix: 0, ask: 0, applied: 0, added: 0 };
+    var n = { all: CASES.length, todo: 0, pass: 0, fix: 0, question: 0, applied: 0, added: 0 };
     CASES.forEach(function (c) {
       var v = (review[SLUG[c.tc_id]] || {}).verdict;
-      if (v === "pass" || v === "fix" || v === "ask") { n[v]++; } else { n.todo++; }
+      if (v === "pass" || v === "fix") { n[v]++; } else { n.todo++; }
+      var q = questions[SLUG[c.tc_id]];
+      if (q && q.text && !q.answer) { n.question++; }
       var ap = applied[SLUG[c.tc_id]];
       if (ap) { n.applied++; if (wasAdded(ap)) { n.added++; } }
     });
@@ -761,7 +829,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 
   function render() {
     var n = counts();
-    var reviewed = n.pass + n.fix + n.ask;
+    var reviewed = n.pass + n.fix;
     doneEl.textContent = reviewed;
     fillEl.style.width = (CASES.length ? (reviewed / CASES.length * 100) : 0) + "%";
     Object.keys(n).forEach(function (k) {
@@ -774,6 +842,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       var v = (review[SLUG[c.tc_id]] || {}).verdict || "";
       var ok = filter === "all" ? true
         : filter === "todo" ? !v
+        : filter === "question" ? (function (q) { return !!(q && q.text && !q.answer); })(questions[SLUG[c.tc_id]])
         : filter === "applied" ? !!applied[SLUG[c.tc_id]]
         : filter === "added" ? wasAdded(applied[SLUG[c.tc_id]])
         : v === filter;
@@ -863,7 +932,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   var seen = {}, focusChecked = false;
   function focusSeen(which) {
     seen[which] = true;
-    if (focusChecked || FOCUS === "all" || !seen.cases || !seen.applied) { return; }
+    if (focusChecked || FOCUS === "all"
+        || !seen.cases || !seen.applied || !seen.questions) { return; }
     focusChecked = true;
     if (!counts()[FOCUS]) { setFilter("all"); }
   }
@@ -925,6 +995,32 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     save(tcId, cur === b.dataset.k ? "" : b.dataset.k, (review[SLUG[tcId]] || {}).note || "");
   });
 
+  var ansTimers = {};
+  rowsEl.addEventListener("input", function (e) {
+    var box = e.target.closest(".qbox");
+    if (!box || !canWrite) { return; }
+    var tcId = box.closest("tr").dataset.tc;
+    var key = SLUG[tcId];
+    clearTimeout(ansTimers[tcId]);
+    ansTimers[tcId] = setTimeout(function () {
+      var q = questions[key];
+      if (!q) { return; }
+      var rec = {
+        tc_id: tcId, text: q.text, by: q.by || "",
+        created_at: q.created_at || new Date().toISOString(),
+        answer: box.value,
+        answered_by: myId || "",
+        answered_at: new Date().toISOString()
+      };
+      questions[key] = rec;
+      render();
+      if (!db) { return; }
+      enqueue("questions/" + key, function () {
+        return db.collection("questions").doc(key).set(rec);
+      }).catch(function () { render(); });
+    }, 700);
+  });
+
   var noteTimers = {};
   rowsEl.addEventListener("input", function (e) {
     var box = e.target.closest(".fixbox");
@@ -949,7 +1045,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
           by: myId,
           count_pass: n.pass,
           count_fix: n.fix,
-          count_ask: n.ask,
+          count_question: n.question,
           count_global: n.globals
         });
       }).catch(function () {});
@@ -1044,6 +1140,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       setMode(document.body.classList.contains("reviewing"));
       focusSeen("cases");
       focusSeen("applied");
+      focusSeen("questions");
       render();
       return;
     }
@@ -1071,6 +1168,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       render();
       focusSeen("applied");
     }, function () { focusSeen("applied"); });
+
+    db.collection("questions").onSnapshot(function (snap) {
+      var next = {};
+      snap.docs.forEach(function (d) {
+        var v = d.data();
+        if (v && v.text) { next[d.id] = v; }
+      });
+      questions = next;
+      document.body.classList.toggle("has-q", Object.keys(next).length > 0);
+      render();
+      focusSeen("questions");
+    }, function () { focusSeen("questions"); });
 
     db.collection("global_fixes").onSnapshot(function (snap) {
       var next = {};
@@ -1103,7 +1212,7 @@ def main() -> int:
     ap.add_argument("--input", required=True, help="review.json from extract_cases.py")
     ap.add_argument("--output", required=True, help=".html to write")
     ap.add_argument("--focus", default="all",
-                    choices=["all", "todo", "pass", "fix", "ask", "applied", "added"],
+                    choices=["all", "todo", "pass", "fix", "question", "applied", "added"],
                     help="which chip the page opens on (default all); "
                          "'applied' is the second-round view — only the cases "
                          "a previous --apply changed or added")

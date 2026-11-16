@@ -1,6 +1,6 @@
 # The review page's database
 
-Four collections in the artifact's own `db`. Document ids are the TC ID with
+Five collections in the artifact's own `db`. Document ids are the TC ID with
 every character outside `A-Za-z0-9_-.~:@+` replaced by `_` (db path segments
 allow nothing else), so the real TC ID always travels in the body as well.
 
@@ -13,7 +13,7 @@ Written by the page when someone presses a verdict button or types in the box.
 ```json
 {
   "tc_id": "FEATURE-AREA-004",
-  "verdict": "pass | fix | ask",
+  "verdict": "pass | fix",
   "note": "แก้เป็นอะไร / คำถามถึง BA",
   "reviewer_id": "u_...",
   "updated_at": "2026-11-13T08:30:00.000Z"
@@ -33,6 +33,34 @@ the edits are in the workbook, after copying each note into that case's
 differ per viewer and go stale. The page resolves them for display with
 `user.profiles(ids)`; `ArtifactData`'s `action: "profiles"` does the same from
 a session.
+
+## `questions` — what the set is waiting on BA for
+
+One document per case with an open question, id = the slugged TC ID. Written
+from a session when a review turns up something only BA or PO can settle, and
+read back once they have.
+
+```json
+{
+  "tc_id": "FEATURE-AREA-013",
+  "text": "…the question, with the answer options spelled out…",
+  "by": "u_...",
+  "created_at": "2026-11-16T04:00:00.000Z",
+  "answer": "…what BA said; absent until someone types it…",
+  "answered_by": "u_...",
+  "answered_at": "2026-11-16T09:00:00.000Z"
+}
+```
+
+A question is **not** a verdict: the same case can be `pass` and still carry
+one. That is why it has its own collection and its own column on the page,
+visible in presentation mode — BA reads it off the screen without anyone
+flipping into review mode. The **มีคำถาม** chip counts only the ones with no
+`answer` yet, so it empties as the meeting goes.
+
+Write `text` with the options in it, not just the question, and name the cases
+an answer would move. Once `answer` is applied to the workbook, delete the
+document — a resolved question that stays becomes noise in the next round.
 
 ## `global_fixes` — findings that hit the whole set
 
@@ -63,7 +91,7 @@ Written when **ส่งกลับเพื่อแก้ไข** is pressed.
   "by": "u_...",
   "count_pass": 41,
   "count_fix": 9,
-  "count_ask": 3,
+  "count_question": 3,
   "count_global": 2
 }
 ```
