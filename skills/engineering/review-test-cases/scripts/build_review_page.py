@@ -1007,7 +1007,44 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   });
 
   /* --- ส่งกลับ --------------------------------------------------------- */
+
+  /* A note saves on a 700 ms debounce, so a comment typed and sent in the
+     same breath would never reach the database — the verdict would arrive
+     without the one thing that says what to do. Flush the pending ones. */
+  function flushNotes() {
+    var rows = rowsEl.querySelectorAll("tr[data-tc]");
+    for (var i = 0; i < rows.length; i++) {
+      var tcId = rows[i].dataset.tc;
+      if (!noteTimers[tcId]) { continue; }
+      clearTimeout(noteTimers[tcId]);
+      noteTimers[tcId] = 0;
+      var box = rows[i].querySelector(".fixbox");
+      if (box) { save(tcId, (review[SLUG[tcId]] || {}).verdict || "fix", box.value); }
+    }
+  }
+
+  /* แก้ with an empty box is an instruction with no content: it reaches
+     --apply as "change this case" and nothing more, and the round comes back
+     unchanged. ผ่าน needs no comment, so only แก้ is counted here. */
+  function noteless() {
+    var out = [];
+    CASES.forEach(function (c, i) {
+      var r = review[SLUG[c.tc_id]];
+      if (r && r.verdict === "fix" && !String(r.note || "").trim()) {
+        out.push({ no: i + 1, tc: c.tc_id });
+      }
+    });
+    return out;
+  }
+
   sendEl.addEventListener("click", function () {
+    flushNotes();
+    var blank = noteless();
+    if (blank.length) { openBlankSheet(blank); return; }
+    submit();
+  });
+
+  function submit() {
     var n = counts();
     n.globals = Object.keys(globals).length;
     lastBatch += 1;
@@ -1025,7 +1062,45 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       }).catch(function () {});
     }
     openSheet(n);
-  });
+  }
+
+  /* Pressing ส่งกลับ with a comment still unwritten is almost always a slip,
+     so it asks instead of either going through or blocking. "ไปพิมพ์" lands
+     the reviewer in the first such box rather than making them hunt for it. */
+  function openBlankSheet(blank) {
+    var nums = blank.map(function (b) { return b.no; }).join(", ");
+    var sheet = document.createElement("div");
+    sheet.className = "sheet";
+    sheet.innerHTML =
+      '<div class="box" role="dialog" aria-label="ยังไม่ได้พิมพ์ comment">' +
+        "<h2>ยังไม่ได้พิมพ์ comment " + blank.length + " เคส</h2>" +
+        '<p class="sub">เคส ' + esc(nums) + " กด <b>แก้</b> ไว้แต่ช่องรีวิวยังว่าง " +
+          "ส่งกลับตอนนี้จะไม่รู้ว่าให้แก้เป็นอะไร (กด <b>ผ่าน</b> ไม่ต้องพิมพ์)</p>" +
+        '<div class="row">' +
+          '<button class="send" id="goto">ไปพิมพ์ comment</button>' +
+          '<button class="chip" id="anyway">ส่งกลับเลย</button>' +
+        "</div>" +
+      "</div>";
+    document.body.appendChild(sheet);
+
+    function close() { sheet.remove(); }
+    sheet.addEventListener("click", function (e) { if (e.target === sheet) { close(); } });
+    sheet.querySelector("#anyway").addEventListener("click", function () {
+      close();
+      submit();
+    });
+    sheet.querySelector("#goto").addEventListener("click", function () {
+      close();
+      var rows = rowsEl.querySelectorAll("tr[data-tc]");
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].dataset.tc !== blank[0].tc) { continue; }
+        rows[i].scrollIntoView({ block: "center" });
+        var box = rows[i].querySelector(".fixbox");
+        if (box && !box.hidden) { box.focus(); }
+        return;
+      }
+    });
+  }
 
   function openSheet(n) {
     var cmd = '/review-test-cases --apply "' + WORKBOOK + '"';
@@ -1039,7 +1114,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
         '<div class="tally">' +
           "<div><b>" + n.pass + "</b>ผ่าน</div>" +
           "<div><b>" + n.fix + "</b>แก้</div>" +
-          "<div><b>" + n.ask + "</b>ถาม BA</div>" +
+          (n.question ? "<div><b>" + n.question + "</b>มีคำถาม</div>" : "") +
           (n.globals ? "<div><b>" + n.globals + "</b>แก้ทั้งชุด</div>" : "") +
         "</div>" +
         '<div class="cmd" id="cmdtext">' + esc(cmd) + "</div>" +
