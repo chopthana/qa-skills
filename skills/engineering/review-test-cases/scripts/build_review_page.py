@@ -372,31 +372,12 @@ body:not(.has-q) .c-q { display: none }
   background: var(--ask-bg);
   border-radius: 0 6px 6px 0;
 }
-.qans {
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-left: 2px solid var(--pass);
-  background: var(--pass-bg);
-  border-radius: 0 6px 6px 0;
-  font-size: 12.5px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+.qhint {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
 }
-.qans b { color: var(--pass) }
-.qbox {
-  margin-top: 8px;
-  width: 100%;
-  min-height: 60px;
-  resize: vertical;
-  font: inherit;
-  font-size: 12.5px;
-  color: var(--ink);
-  background: var(--card);
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 7px 9px;
-}
-body:not(.reviewing) .qbox { display: none }
+body:not(.reviewing) .qhint { display: none }
 tr[data-q="open"] > td:first-child { box-shadow: inset 3px 0 0 var(--ask) }
 
 /* --- verdict controls --------------------------------------------------- */
@@ -701,8 +682,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
         '<div class="wasbox" data-f="note"></div></td>' +
       '<td class="c-q" data-label="คำถาม / คำตอบ">' +
         '<div class="qtext" hidden></div>' +
-        '<div class="qans" hidden></div>' +
-        '<textarea class="qbox" hidden placeholder="คำตอบจาก BA / PO"></textarea>' +
+        '<div class="qhint" hidden>ได้คำตอบแล้วกด ผ่าน หรือ แก้ แล้วพิมพ์คำตอบในช่องรีวิว</div>' +
       '</td>' +
       '<td class="c-review" data-label="รีวิว">' +
         '<div class="verdicts">' +
@@ -735,27 +715,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       btns[b].disabled = !canWrite;
     }
 
-    /* A question is not a verdict: it rides alongside one, in its own column,
-       and stays until BA answers it. */
+    /* A question is not a verdict: it rides alongside one, in its own column.
+       The answer is not a third box either — BA either says "change it like
+       this", which is แก้ plus the note, or "it is fine", which is ผ่าน. So
+       the column only ever shows the question, and the verdict resolves it. */
     var q = questions[SLUG[c.tc_id]];
     var qEl = tr.querySelector(".qtext");
-    var aEl = tr.querySelector(".qans");
-    var qBox = tr.querySelector(".qbox");
+    var hintEl = tr.querySelector(".qhint");
     if (q && q.text) {
-      tr.dataset.q = q.answer ? "answered" : "open";
+      tr.dataset.q = v ? "answered" : "open";
       qEl.hidden = false; qEl.textContent = q.text;
-      qBox.hidden = false;
-      qBox.readOnly = !canWrite;
-      if (document.activeElement !== qBox) { qBox.value = q.answer || ""; }
-      if (q.answer) {
-        aEl.hidden = false;
-        aEl.innerHTML = "<b>ตอบแล้ว</b> " + esc(q.answer);
-      } else {
-        aEl.hidden = true;
-      }
+      hintEl.hidden = !!v;
     } else {
       tr.removeAttribute("data-q");
-      qEl.hidden = true; aEl.hidden = true; qBox.hidden = true;
+      qEl.hidden = true; hintEl.hidden = true;
     }
 
     var box = tr.querySelector(".fixbox");
@@ -820,7 +793,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       var v = (review[SLUG[c.tc_id]] || {}).verdict;
       if (v === "pass" || v === "fix") { n[v]++; } else { n.todo++; }
       var q = questions[SLUG[c.tc_id]];
-      if (q && q.text && !q.answer) { n.question++; }
+      if (q && q.text && !v) { n.question++; }
       var ap = applied[SLUG[c.tc_id]];
       if (ap) { n.applied++; if (wasAdded(ap)) { n.added++; } }
     });
@@ -842,7 +815,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
       var v = (review[SLUG[c.tc_id]] || {}).verdict || "";
       var ok = filter === "all" ? true
         : filter === "todo" ? !v
-        : filter === "question" ? (function (q) { return !!(q && q.text && !q.answer); })(questions[SLUG[c.tc_id]])
+        : filter === "question" ? (!!(questions[SLUG[c.tc_id]] || {}).text && !v)
         : filter === "applied" ? !!applied[SLUG[c.tc_id]]
         : filter === "added" ? wasAdded(applied[SLUG[c.tc_id]])
         : v === filter;
@@ -993,32 +966,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     var tcId = b.closest("tr").dataset.tc;
     var cur = (review[SLUG[tcId]] || {}).verdict;
     save(tcId, cur === b.dataset.k ? "" : b.dataset.k, (review[SLUG[tcId]] || {}).note || "");
-  });
-
-  var ansTimers = {};
-  rowsEl.addEventListener("input", function (e) {
-    var box = e.target.closest(".qbox");
-    if (!box || !canWrite) { return; }
-    var tcId = box.closest("tr").dataset.tc;
-    var key = SLUG[tcId];
-    clearTimeout(ansTimers[tcId]);
-    ansTimers[tcId] = setTimeout(function () {
-      var q = questions[key];
-      if (!q) { return; }
-      var rec = {
-        tc_id: tcId, text: q.text, by: q.by || "",
-        created_at: q.created_at || new Date().toISOString(),
-        answer: box.value,
-        answered_by: myId || "",
-        answered_at: new Date().toISOString()
-      };
-      questions[key] = rec;
-      render();
-      if (!db) { return; }
-      enqueue("questions/" + key, function () {
-        return db.collection("questions").doc(key).set(rec);
-      }).catch(function () { render(); });
-    }, 700);
   });
 
   var noteTimers = {};
