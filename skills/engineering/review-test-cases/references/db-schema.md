@@ -23,6 +23,13 @@ Written by the page when someone presses a verdict button or types in the box.
 A case with no verdict has **no document** — clearing a verdict deletes it.
 So "ยังไม่รีวิว" is the absence of a row, never `verdict: ""`.
 
+The page puts each case in exactly one chip, deciding in the order verdict →
+open question → added → changed → ยังไม่รีวิว, so the counts partition the set
+and every chip but ผ่าน / แก้ counts down to zero as the round goes. That is
+why a verdict is what empties `questions`, `applied` and `added` from the
+reviewer's point of view, while the documents themselves stay for the badge
+and the before/after.
+
 **`--apply` clears the verdicts it answered.** A `fix` whose edit has landed
 is a spent instruction: leaving it makes ยังไม่รีวิว read 0 while the whole
 batch is in fact waiting to be looked at again. Delete those documents once

@@ -115,17 +115,28 @@ long review back up where it stopped.
 Use it from the second round on. The first publish of a set has nothing
 applied yet, so it opens on ทั้งหมด either way.
 
-The chips answer three different questions, and they are easy to confuse:
+**Every case sits in exactly one chip.** The counts partition the set — they
+add up to the total — because a reviewer reading two chips that both contain
+the same case cannot tell how much is left. The bucket is decided in this
+order, first match winning:
 
-| chip | what it is |
+| chip | a case lands here when |
 | --- | --- |
-| ผ่าน / แก้ / ถาม BA | the verdict **someone gave** — an opinion |
-| แก้แล้ว / เพิ่มใหม่ | what the last `--apply` **did to the file** — history |
-| ยังไม่รีวิว | what is **still waiting** for a verdict this round |
+| ผ่าน / แก้ | it has a verdict — that settles it, whatever its history |
+| มีคำถาม | no verdict, and a `questions` row is open on it |
+| เพิ่มใหม่ | no verdict, and the last `--apply` added it |
+| แก้แล้ว | no verdict, and the last `--apply` changed it |
+| ยังไม่รีวิว | none of the above |
 
-A case can be แก้แล้ว without ever having been แก้: a `global_fixes` entry
-rewrites cases whose own verdict was ผ่าน. Keep the three apart when you
-report, and never say "แก้ N เคส" when you mean "แก้แล้ว N เคส".
+So every chip except ผ่าน and แก้ is work still to do, and each counts down to
+zero as the round goes. A case that was แก้แล้ว and has now been looked at
+leaves that chip for ผ่าน or แก้; it keeps its ✔ badge and its before/after on
+the row, which is where that history belongs.
+
+Keep the two ideas apart when you report, though: a case can be แก้แล้ว
+without ever having been แก้, because a `global_fixes` entry rewrites cases
+whose own verdict was ผ่าน. Never say "แก้ N เคส" when you mean
+"แก้แล้ว N เคส".
 
 ### What the page does
 
